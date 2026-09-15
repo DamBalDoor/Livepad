@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.yRemoteSelection {
+  background-color: rgb(250 129 0 / 50%);
+}
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid orange;
+  border-top: 2px solid orange;
+  border-bottom: 2px solid orange;
+  height: 100%;
+  box-sizing: border-box;
+}
+.yRemoteSelectionHead::after {
+  position: absolute;
+  content: " ";
+  border: 3px solid orange;
+  border-radius: 4px;
+  left: -4px;
+  top: -5px;
+}

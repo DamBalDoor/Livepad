@@ -1,0 +1,41 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: livepad-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: livepad
+      MYSQL_DATABASE: livepad
+      MYSQL_USER: livepad
+      MYSQL_PASSWORD: livepad
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - livepad_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ulivepad", "-plivepad"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  runner:
+    build:
+      context: ./apps/runner
+    container_name: livepad-runner
+    restart: unless-stopped
+    environment:
+      PORT: "4000"
+      NODE_IMAGE: node:20-alpine
+      JOBS_DIR: /jobs
+    ports:
+      - "4000:4000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - livepad_jobs:/jobs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  livepad_mysql:
+  livepad_jobs:

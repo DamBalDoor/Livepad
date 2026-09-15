@@ -1,0 +1,22 @@
+{
+  "name": "livepad",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @livepad/api --filter @livepad/web --filter @livepad/runner dev",
+    "dev:web": "pnpm --filter @livepad/web dev",
+    "dev:api": "pnpm --filter @livepad/api dev",
+    "dev:runner": "pnpm --filter @livepad/runner dev",
+    "db:up": "docker compose up -d mysql",
+    "db:up:local": "powershell -NoProfile -File scripts/start-mysql.ps1",
+    "db:push": "pnpm --filter @livepad/api db:push",
+    "build": "pnpm --filter @livepad/web build && pnpm --filter @livepad/api build"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
