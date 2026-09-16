@@ -11,7 +11,7 @@ Stack: pnpm workspaces. `apps/web` Vite React Tailwind Monaco. `apps/api` Fastif
 
 Start: copy `.env.example` → `.env`, `pnpm install`, `pnpm db:up` (or `pnpm db:up:local` on Windows without Docker), `pnpm db:push`, `pnpm dev`. UI `localhost:5173`, API `3001`, collab WS `1234`, runner `4000`.
 
-Vite proxies `/api` and `/ws` to the API. Collab is **not** proxied: the browser opens `ws://<host>:1234`.
+Vite proxies `/api`, `/ws`, and `/collab` (→ Hocuspocus `:1234`). Browser uses same-origin `/collab`; Hocuspocus still listens on `:1234` (see `apps/web/src/lib/collab-url.ts`).
 
 ## Do
 

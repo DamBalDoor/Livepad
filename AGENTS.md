@@ -6,9 +6,9 @@
 
 Livepad — self-hosted коллаборативная IDE для live-coding интервью на Node.js. Интервьюер с аккаунтом создаёт комнату, кандидат входит по `/r/:slug?token=...` с отображаемым именем, без аккаунта.
 
-Сейчас: комнаты, Monaco + Yjs, npm/node, общая консоль, host-only панель целостности с явным предупреждением кандидату.
+Сейчас (см. также README §«Что уже есть»): invite + preflight «Прозрачность сессии»; Monaco + Yjs (Hocuspocus); Install / Run / **Stop**, общая консоль; чипы **Collab** и **Runner**; host-only «Кандидат» + баннер у гостя; rotate invite / завершить комнату; предупреждение **host_cookie**; тема **dark** по умолчанию, `light`/`dark` в `localStorage` (`livepad.theme`), без system / `prefers-color-scheme`.
 
-Не сейчас: задания, таймер, автопроверка, чат, видео, LSP, TTY, Google, Piston, скрытый прокторинг.
+Не сейчас: задания, таймер, автопроверка, чат, видео, LSP, TTY, Google, Piston, скрытый прокторинг, режим темы system.
 
 ## Куда смотреть
 
@@ -22,7 +22,7 @@ Livepad — self-hosted коллаборативная IDE для live-coding и
 | Docker / local run | `apps/runner/src/docker.ts` |
 | Env | `.env.example`, `apps/api/src/env.ts` |
 
-Vite проксирует `/api` и `/ws` на `:3001`. Hocuspocus — **отдельный** порт `:1234`, клиент ходит туда напрямую.
+Vite проксирует `/api`, `/ws` и `/collab` на API и Hocuspocus (`:3001` / `:1234`). Браузер открывает collab как same-origin `/collab` (см. `apps/web/src/lib/collab-url.ts`).
 
 ## Как работать
 
