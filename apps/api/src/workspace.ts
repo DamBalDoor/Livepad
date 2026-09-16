@@ -1,4 +1,5 @@
 import * as Y from "yjs";
+import type { RoomTemplate } from "@livepad/shared";
 
 export const DEFAULT_INDEX_JS = `console.log("Hello, Livepad");
 
@@ -18,9 +19,19 @@ export const DEFAULT_PACKAGE_JSON = `{
 }
 `;
 
-export function seedWorkspace(document: Y.Doc): void {
+export function seedWorkspace(document: Y.Doc, template: RoomTemplate = "node-hello"): void {
   const files = document.getMap<Y.Text>("files");
   if (files.size > 0) return;
+
+  const meta = document.getMap<string>("meta");
+  meta.set("entrypoint", "index.js");
+
+  if (template === "empty") {
+    const index = new Y.Text();
+    index.insert(0, "// Начните писать код\n");
+    files.set("index.js", index);
+    return;
+  }
 
   const index = new Y.Text();
   index.insert(0, DEFAULT_INDEX_JS);
@@ -29,9 +40,6 @@ export function seedWorkspace(document: Y.Doc): void {
   const pkg = new Y.Text();
   pkg.insert(0, DEFAULT_PACKAGE_JSON);
   files.set("package.json", pkg);
-
-  const meta = document.getMap<string>("meta");
-  meta.set("entrypoint", "index.js");
 }
 
 export function yDocToFiles(document: Y.Doc): Record<string, string> {

@@ -20,6 +20,7 @@ async function gate(request: { headers: object; query: unknown }, slug: string):
   const query = request.query as { token?: string };
   const user = await getSessionUser(request as Parameters<typeof getSessionUser>[0]);
   const isHost = Boolean(user && user.id === room.hostUserId);
+  if (room.closedAt && !isHost) return null;
   const isGuest = Boolean(query.token && query.token === room.inviteToken);
   if (!isHost && !isGuest) return null;
   return { roomId: room.id, isHost };

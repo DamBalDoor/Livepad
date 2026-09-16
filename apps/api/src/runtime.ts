@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "@fastify/websocket";
 import { eq } from "drizzle-orm";
-import type { RuntimeEvent } from "@livepad/shared";
+import type { RuntimeAction, RuntimeEvent } from "@livepad/shared";
 import { db } from "./db/index.js";
 import { rooms, runs } from "./db/schema.js";
 import { env } from "./env.js";
@@ -14,6 +14,8 @@ const MAX_FILES = 80;
 const MAX_FILE_BYTES = 200_000;
 const MAX_OUTPUT = 256_000;
 const busyRooms = new Set<string>();
+const busyActionByRoom = new Map<string, RuntimeAction>();
+const abortByRoom = new Map<string, AbortController>();
 const lastOutput = new Map<string, RuntimeEvent[]>();
 const sockets = new Map<string, Set<WebSocket>>();
 
@@ -63,14 +65,29 @@ function broadcast(slug: string, event: RuntimeEvent): void {
 async function canAccessRoom(request: { headers: object; query: unknown }, slug: string): Promise<boolean> {
   const [room] = await db.select().from(rooms).where(eq(rooms.slug, slug)).limit(1);
   if (!room) return false;
-  const query = request.query as { token?: string; slug?: string };
-  if (query.token && query.token === room.inviteToken) return true;
   const fakeRequest = request as Parameters<typeof getSessionUser>[0];
   const user = await getSessionUser(fakeRequest);
-  return Boolean(user && user.id === room.hostUserId);
+  if (user && user.id === room.hostUserId) return true;
+  if (room.closedAt) return false;
+  const query = request.query as { token?: string; slug?: string };
+  if (query.token && query.token === room.inviteToken) return true;
+  return false;
 }
 
-async function runJob(slug: string, action: "install" | "run", startedBy: string): Promise<void> {
+async function stopJob(slug: string): Promise<void> {
+  abortByRoom.get(slug)?.abort();
+  try {
+    await fetch(`${env.RUNNER_URL}/jobs/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ roomSlug: slug }),
+    });
+  } catch {
+    // runner may be unreachable; abort still clears client state
+  }
+}
+
+async function runJob(slug: string, action: RuntimeAction, startedBy: string): Promise<void> {
   if (busyRooms.has(slug)) {
     broadcast(slug, { type: "error", message: "В этой комнате уже идёт запуск" });
     return;
@@ -82,7 +99,11 @@ async function runJob(slug: string, action: "install" | "run", startedBy: string
   }
 
   busyRooms.add(slug);
-  lastOutput.set(slug, []);
+  busyActionByRoom.set(slug, action);
+  broadcast(slug, { type: "busy", action });
+  lastOutput.set(slug, [{ type: "busy", action }]);
+  const abort = new AbortController();
+  abortByRoom.set(slug, abort);
   const runId = randomUUID();
   await db.insert(runs).values({
     id: runId,
@@ -109,6 +130,7 @@ async function runJob(slug: string, action: "install" | "run", startedBy: string
         files,
         entrypoint,
       }),
+      signal: abort.signal,
     });
 
     if (!response.ok || !response.body) {
@@ -158,11 +180,20 @@ async function runJob(slug: string, action: "install" | "run", startedBy: string
       })
       .where(eq(runs.id, runId));
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось запустить код";
-    broadcast(slug, { type: "error", message });
-    await db.update(runs).set({ status: "error", stderr: message }).where(eq(runs.id, runId));
+    if (error instanceof Error && error.name === "AbortError") {
+      broadcast(slug, { type: "status", data: "Остановлено.\n" });
+      broadcast(slug, { type: "exit", code: 130 });
+      await db.update(runs).set({ status: "error", stderr: "stopped", exitCode: 130 }).where(eq(runs.id, runId));
+    } else {
+      const message = error instanceof Error ? error.message : "Не удалось запустить код";
+      broadcast(slug, { type: "error", message });
+      await db.update(runs).set({ status: "error", stderr: message }).where(eq(runs.id, runId));
+    }
   } finally {
     busyRooms.delete(slug);
+    busyActionByRoom.delete(slug);
+    abortByRoom.delete(slug);
+    broadcast(slug, { type: "idle" });
   }
 }
 
@@ -180,10 +211,17 @@ export async function registerRuntimeRoutes(app: FastifyInstance): Promise<void>
     for (const event of lastOutput.get(slug) ?? []) {
       socket.send(JSON.stringify(event));
     }
+    if (busyRooms.has(slug)) {
+      socket.send(JSON.stringify({ type: "busy", action: busyActionByRoom.get(slug) ?? "run" }));
+    }
 
     socket.on("message", async (raw) => {
       try {
         const msg = JSON.parse(String(raw)) as { type?: string };
+        if (msg.type === "stop") {
+          await stopJob(slug);
+          return;
+        }
         if (msg.type !== "install" && msg.type !== "run") return;
         const user = await getSessionUser(request);
         await runJob(slug, msg.type, user?.email ?? "guest");

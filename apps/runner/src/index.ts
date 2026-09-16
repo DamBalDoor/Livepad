@@ -1,11 +1,20 @@
 import Fastify from "fastify";
-import { executeJob, type JobEvent } from "./docker.js";
+import { cancelJob, executeJob, type JobEvent } from "./docker.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 
 const app = Fastify({ logger: true });
 
 app.get("/health", async () => ({ ok: true }));
+
+app.post("/jobs/cancel", async (request, reply) => {
+  const body = request.body as { roomSlug?: string };
+  if (!body.roomSlug) {
+    return reply.code(400).send({ error: "roomSlug обязателен" });
+  }
+  const ok = cancelJob(body.roomSlug);
+  return { cancelled: ok };
+});
 
 app.post("/jobs", async (request, reply) => {
   const body = request.body as {

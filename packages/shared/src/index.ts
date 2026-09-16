@@ -1,8 +1,12 @@
+export type RoomTemplate = "node-hello" | "empty";
+
 export type RoomSummary = {
   id: string;
   slug: string;
   title: string;
   createdAt: string;
+  template?: RoomTemplate;
+  closedAt?: string | null;
 };
 
 export type RoomAccess = {
@@ -10,6 +14,7 @@ export type RoomAccess = {
   title: string;
   role: "host" | "guest";
   inviteToken: string;
+  closedAt?: string | null;
 };
 
 export type RuntimeEvent =
@@ -17,9 +22,13 @@ export type RuntimeEvent =
   | { type: "stderr"; data: string }
   | { type: "status"; data: string }
   | { type: "exit"; code: number | null }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "busy"; action: RuntimeAction }
+  | { type: "idle" };
 
 export type RuntimeAction = "install" | "run";
+
+export type RuntimeMessage = RuntimeAction | "stop";
 
 export type IntegrityEventKind =
   | "hello"
@@ -68,4 +77,3 @@ export type IntegritySnapshot = {
   clients: IntegrityClientState[];
   events: IntegrityEvent[];
 };
-

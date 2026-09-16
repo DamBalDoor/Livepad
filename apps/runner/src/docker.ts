@@ -14,6 +14,15 @@ export type JobEvent =
   | { type: "exit"; code: number | null }
   | { type: "error"; message: string };
 
+const activeByRoom = new Map<string, () => void>();
+
+export function cancelJob(roomSlug: string): boolean {
+  const kill = activeByRoom.get(roomSlug);
+  if (!kill) return false;
+  kill();
+  return true;
+}
+
 function toPosix(p: string): string {
   return p.replaceAll("\\", "/");
 }
@@ -39,7 +48,12 @@ function killChild(child: ReturnType<typeof spawn>): void {
 function runCommand(
   command: string,
   args: string[],
-  options: { cwd?: string; timeoutMs: number; onEvent: (event: JobEvent) => void },
+  options: {
+    cwd?: string;
+    timeoutMs: number;
+    roomSlug: string;
+    onEvent: (event: JobEvent) => void;
+  },
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -48,6 +62,22 @@ function runCommand(
       env: { ...process.env, npm_config_ignore_scripts: "true" },
     });
     let timedOut = false;
+    let cancelled = false;
+    let settled = false;
+
+    const finish = (code: number) => {
+      if (settled) return;
+      settled = true;
+      activeByRoom.delete(options.roomSlug);
+      resolve(code);
+    };
+
+    activeByRoom.set(options.roomSlug, () => {
+      if (settled) return;
+      cancelled = true;
+      killChild(child);
+    });
+
     const timer = setTimeout(() => {
       timedOut = true;
       killChild(child);
@@ -61,11 +91,17 @@ function runCommand(
     child.stderr?.on("data", (chunk: Buffer) => options.onEvent({ type: "stderr", data: chunk.toString() }));
     child.on("error", (error) => {
       clearTimeout(timer);
+      activeByRoom.delete(options.roomSlug);
       reject(error);
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      resolve(timedOut ? 124 : code ?? 1);
+      if (cancelled) {
+        options.onEvent({ type: "status", data: "Остановлено пользователем.\n" });
+        finish(130);
+        return;
+      }
+      finish(timedOut ? 124 : code ?? 1);
     });
   });
 }
@@ -99,6 +135,7 @@ export async function executeJob(input: {
   const docker = await hasDocker();
   const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
   const nodeBin = process.execPath;
+  const runOpts = { roomSlug: input.roomSlug, onEvent: input.onEvent };
 
   if (!docker) {
     input.onEvent({
@@ -109,7 +146,7 @@ export async function executeJob(input: {
       const code = await runCommand(
         npmBin,
         ["install", "--ignore-scripts", "--no-audit", "--no-fund"],
-        { cwd: workdir, timeoutMs: INSTALL_TIMEOUT_MS, onEvent: input.onEvent },
+        { cwd: workdir, timeoutMs: INSTALL_TIMEOUT_MS, ...runOpts },
       );
       input.onEvent({ type: "exit", code });
       return;
@@ -120,7 +157,7 @@ export async function executeJob(input: {
     const code = await runCommand(nodeBin, args, {
       cwd: workdir,
       timeoutMs: RUN_TIMEOUT_MS,
-      onEvent: input.onEvent,
+      ...runOpts,
     });
     input.onEvent({ type: "exit", code });
     return;
@@ -130,7 +167,7 @@ export async function executeJob(input: {
   const common = ["run", "--rm", "--memory=256m", "--cpus=0.5", "--pids-limit=128", "-v", volume, "-w", "/workspace"];
 
   if (input.action === "install") {
-    input.onEvent({ type: "status", data: "Установка зависимостей в песочнице...\n" });
+    input.onEvent({ type: "status", data: "Установка зависимостей в песочнице (Docker)...\n" });
     const code = await runCommand("docker", [
       ...common,
       "--network=bridge",
@@ -140,7 +177,7 @@ export async function executeJob(input: {
       "--ignore-scripts",
       "--no-audit",
       "--no-fund",
-    ], { timeoutMs: INSTALL_TIMEOUT_MS, onEvent: input.onEvent });
+    ], { timeoutMs: INSTALL_TIMEOUT_MS, ...runOpts });
     input.onEvent({ type: "exit", code });
     return;
   }
@@ -148,7 +185,7 @@ export async function executeJob(input: {
   const entry = input.entrypoint.endsWith(".ts")
     ? ["node", "--experimental-strip-types", input.entrypoint]
     : ["node", input.entrypoint];
-  input.onEvent({ type: "status", data: "Запуск без сети...\n" });
+  input.onEvent({ type: "status", data: "Запуск без сети (Docker)...\n" });
   const code = await runCommand("docker", [
     ...common,
     "--network=none",
@@ -157,6 +194,6 @@ export async function executeJob(input: {
     "no-new-privileges",
     NODE_IMAGE,
     ...entry,
-  ], { timeoutMs: RUN_TIMEOUT_MS, onEvent: input.onEvent });
+  ], { timeoutMs: RUN_TIMEOUT_MS, ...runOpts });
   input.onEvent({ type: "exit", code });
 }

@@ -4,6 +4,7 @@ import type { IntegrityEventKind } from "@livepad/shared";
 const IDLE_MS = 45_000;
 const LARGE_PASTE = 80;
 const AWAY_PASTE_MS = 15_000;
+const DEVTOOLS_GRACE_MS = 8_000;
 
 function clientId(): string {
   const key = "livepad:clientId";
@@ -12,6 +13,14 @@ function clientId(): string {
   const id = crypto.randomUUID();
   sessionStorage.setItem(key, id);
   return id;
+}
+
+function formatAwayMs(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  if (total < 60) return `${total} с`;
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return s > 0 ? `${m} мин ${s} с` : `${m} мин`;
 }
 
 function screenLabel(): string {
@@ -62,7 +71,11 @@ export function useIntegrityReporter(opts: {
     let idle = false;
     let lastActivity = Date.now();
     let lastBackAt = 0;
+    let awayStartedAt = 0;
     let lastDevtools: boolean | null = null;
+    let devtoolsCandidate: boolean | null = null;
+    let devtoolsStreak = 0;
+    const sessionStart = Date.now();
     let lastFullscreen = Boolean(document.fullscreenElement);
     let closed = false;
 
@@ -94,6 +107,7 @@ export function useIntegrityReporter(opts: {
       present = isPresent();
       send("hello", `${nameRef.current} в комнате`, envMeta());
       if (!present) {
+        awayStartedAt = Date.now();
         send("away", `${nameRef.current} ушёл с вкладки Livepad`, envMeta());
       }
     };
@@ -103,11 +117,20 @@ export function useIntegrityReporter(opts: {
       if (next === present) return;
       present = next;
       if (!next) {
+        awayStartedAt = Date.now();
         send("away", `${nameRef.current} ушёл с вкладки Livepad`, envMeta());
         return;
       }
+      const awayMs = awayStartedAt > 0 ? Date.now() - awayStartedAt : 0;
+      awayStartedAt = 0;
       lastBackAt = Date.now();
-      send("back", `${nameRef.current} вернулся в Livepad`, envMeta());
+      send(
+        "back",
+        awayMs > 0
+          ? `${nameRef.current} вернулся через ${formatAwayMs(awayMs)}`
+          : `${nameRef.current} вернулся в Livepad`,
+        { awayMs, ...envMeta() },
+      );
     };
 
     const bumpActivity = () => {
@@ -167,12 +190,22 @@ export function useIntegrityReporter(opts: {
         idle = true;
         send("idle", `${nameRef.current} не печатает уже ${Math.round(IDLE_MS / 1000)}с`);
       }
+
+      if (Date.now() - sessionStart < DEVTOOLS_GRACE_MS) return;
       const dt = devtoolsOpen();
-      if (dt !== lastDevtools) {
-        lastDevtools = dt;
-        send("devtools", dt ? "Возможно открыт DevTools (эвристика)" : "Окно без явного DevTools", {
+      if (dt === devtoolsCandidate) {
+        devtoolsStreak += 1;
+      } else {
+        devtoolsCandidate = dt;
+        devtoolsStreak = 1;
+      }
+      if (devtoolsStreak >= 2 && devtoolsCandidate !== null && devtoolsCandidate !== lastDevtools) {
+        lastDevtools = devtoolsCandidate;
+        send("devtools", devtoolsCandidate
+          ? "Возможно открыт DevTools (эвристика)"
+          : "DevTools не видно (эвристика)", {
           ...envMeta(),
-          devtools: dt,
+          devtools: devtoolsCandidate,
         });
       }
     }, 2000);

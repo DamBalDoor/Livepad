@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { IntegrityClientState, IntegrityEvent, IntegritySnapshot } from "@livepad/shared";
+
+const RECENT_OFFLINE_MS = 15 * 60 * 1000;
 
 function formatDuration(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
@@ -17,6 +19,24 @@ function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function lastEventAt(events: IntegrityEvent[], clientId: string): number {
+  let latest = 0;
+  for (const event of events) {
+    if (event.clientId !== clientId) continue;
+    const t = Date.parse(event.at);
+    if (t > latest) latest = t;
+  }
+  return latest;
+}
+
+function eventLabel(event: IntegrityEvent): string {
+  if (event.kind === "back" && typeof event.meta?.awayMs === "number" && event.meta.awayMs > 0) {
+    const sec = Math.round(event.meta.awayMs / 1000);
+    return `${event.name} вернулся (был вне вкладки ${sec < 60 ? `${sec} с` : formatDuration(event.meta.awayMs)})`;
+  }
+  return event.message;
+}
+
 export default function IntegrityPanel({
   slug,
   token,
@@ -26,6 +46,7 @@ export default function IntegrityPanel({
 }) {
   const [snapshot, setSnapshot] = useState<IntegritySnapshot>({ clients: [], events: [] });
   const [now, setNow] = useState(Date.now());
+  const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
@@ -44,7 +65,24 @@ export default function IntegrityPanel({
     return () => window.clearInterval(timer);
   }, []);
 
-  const guests = snapshot.clients;
+  const { activeClients, pastClients } = useMemo(() => {
+    const active: IntegrityClientState[] = [];
+    const past: IntegrityClientState[] = [];
+    for (const client of snapshot.clients) {
+      if (client.online) {
+        active.push(client);
+        continue;
+      }
+      const lastAt = lastEventAt(snapshot.events, client.clientId);
+      if (lastAt > 0 && now - lastAt <= RECENT_OFFLINE_MS) {
+        active.push(client);
+      } else {
+        past.push(client);
+      }
+    }
+    return { activeClients: active, pastClients: past };
+  }, [snapshot.clients, snapshot.events, now]);
+
   const events = [...snapshot.events].reverse().slice(0, 80);
 
   return (
@@ -53,13 +91,31 @@ export default function IntegrityPanel({
         Кандидат
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        {guests.length === 0 ? (
+        {activeClients.length === 0 && pastClients.length === 0 ? (
           <p className="px-3 py-4 text-xs text-[#9d9d9d]">Пока нет сигналов — кандидат ещё не в комнате.</p>
         ) : (
-          guests.map((client) => (
+          activeClients.map((client) => (
             <ClientCard key={client.clientId} client={client} now={now} />
           ))
         )}
+        {pastClients.length > 0 ? (
+          <div className="border-b border-[#3c3c3c] px-3 py-2">
+            <button
+              type="button"
+              className="text-xs text-[#9d9d9d] hover:text-[#cccccc]"
+              onClick={() => setShowPast((v) => !v)}
+            >
+              {showPast ? "Скрыть" : "Показать"} прошлых ({pastClients.length})
+            </button>
+            {showPast ? (
+              <ul className="mt-2 space-y-1 text-xs text-[#9d9d9d]">
+                {pastClients.map((client) => (
+                  <li key={client.clientId}>{client.name}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
         <div className="border-t border-[#3c3c3c] px-3 py-2 text-xs uppercase tracking-wide text-[#9d9d9d]">
           Лента
         </div>
@@ -70,7 +126,7 @@ export default function IntegrityPanel({
             events.map((event) => (
               <li key={event.id} className="leading-snug">
                 <span className="text-[#9d9d9d]">{timeLabel(event.at)} </span>
-                <span className={tone(event)}>{event.message}</span>
+                <span className={tone(event)}>{eventLabel(event)}</span>
               </li>
             ))
           )}

@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as monaco from "monaco-editor";
 import { MonacoBinding } from "y-monaco";
-import type { RuntimeEvent } from "@livepad/shared";
+import type { RuntimeEvent, RuntimeMessage } from "@livepad/shared";
 import { authClient } from "../auth-client";
 import { getRoom, roomLink } from "../api";
 import FileTree from "../components/FileTree";
@@ -30,6 +30,7 @@ export default function RoomPage() {
   const [nameOk, setNameOk] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [closedAt, setClosedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (isPending) return;
@@ -39,6 +40,7 @@ export default function RoomPage() {
         setRole(room.role);
         setInviteToken(room.inviteToken);
         setHostName(room.hostName ?? "");
+        setClosedAt(room.closedAt ?? null);
         if (room.role === "host") setNameOk(true);
         else if (localStorage.getItem("livepad:name")) setNameOk(true);
       })
@@ -103,6 +105,7 @@ export default function RoomPage() {
       token={inviteToken}
       displayName={displayName}
       role={role}
+      closedAt={closedAt}
       copied={copied}
       onCopy={async () => {
         await navigator.clipboard.writeText(roomLink(slug, inviteToken));
@@ -119,6 +122,7 @@ function Ide({
   token,
   displayName,
   role,
+  closedAt,
   copied,
   onCopy,
 }: {
@@ -127,6 +131,7 @@ function Ide({
   token: string;
   displayName: string;
   role: "host" | "guest";
+  closedAt: string | null;
   copied: boolean;
   onCopy: () => void;
 }) {
@@ -136,6 +141,7 @@ function Ide({
   const [active, setActive] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
+  const [jobBusy, setJobBusy] = useState(false);
   const [status, setStatus] = useState("подключение...");
   const wsRef = useRef<WebSocket | null>(null);
   const providerRef = useRef<HocuspocusProvider | null>(null);
@@ -183,7 +189,11 @@ function Ide({
     wsRef.current = runtime;
     runtime.onmessage = (msg) => {
       const event = JSON.parse(String(msg.data)) as RuntimeEvent;
+      if (event.type === "busy") setJobBusy(true);
+      if (event.type === "idle") setJobBusy(false);
       setEvents((prev) => {
+        if (event.type === "busy") return [...prev, event].slice(-400);
+        if (event.type === "idle") return [...prev, event].slice(-400);
         if (event.type === "status" && (event.data.startsWith("npm") || event.data.startsWith("node"))) {
           return [event];
         }
@@ -224,7 +234,7 @@ function Ide({
     };
   }, [active]);
 
-  function send(type: "install" | "run") {
+  function send(type: RuntimeMessage) {
     wsRef.current?.send(JSON.stringify({ type }));
   }
 
@@ -264,14 +274,35 @@ function Ide({
           <button className="rounded bg-[#0e639c] px-2 py-1 text-xs text-white hover:bg-[#1177bb]" onClick={onCopy}>
             {copied ? "Ссылка скопирована" : "Копировать ссылку"}
           </button>
-          <button className="rounded bg-[#0e639c] px-2 py-1 text-xs text-white hover:bg-[#1177bb]" onClick={() => send("install")}>
+          <button
+            disabled={jobBusy}
+            className="rounded bg-[#0e639c] px-2 py-1 text-xs text-white hover:bg-[#1177bb] disabled:opacity-50"
+            onClick={() => send("install")}
+          >
             Install
           </button>
-          <button className="rounded bg-[#388a34] px-2 py-1 text-xs text-white hover:bg-[#3f9c3a]" onClick={() => send("run")}>
+          <button
+            disabled={jobBusy}
+            className="rounded bg-[#388a34] px-2 py-1 text-xs text-white hover:bg-[#3f9c3a] disabled:opacity-50"
+            onClick={() => send("run")}
+          >
             Run
           </button>
+          {jobBusy ? (
+            <button
+              className="rounded bg-[#a1260d] px-2 py-1 text-xs text-white hover:bg-[#c72e12]"
+              onClick={() => send("stop")}
+            >
+              Стоп
+            </button>
+          ) : null}
         </div>
       </header>
+      {role === "host" && closedAt ? (
+        <div className="shrink-0 border-b border-[#3c3c3c] bg-[#3a2a2a] px-3 py-1 text-xs text-amber-200">
+          Комната закрыта для кандидатов — вы по-прежнему видите код.
+        </div>
+      ) : null}
       {role === "guest" ? (
         <div className="shrink-0 border-b border-[#3c3c3c] bg-[#2a2d2e] px-3 py-1 text-xs text-[#9d9d9d]">
           Организатор видит фокус вкладки Livepad и крупные вставки в редактор.
