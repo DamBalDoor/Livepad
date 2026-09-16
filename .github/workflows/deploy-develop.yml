@@ -36,6 +36,10 @@ jobs:
       - name: Build and push images
         env:
           IMAGE_TAG: ${{ github.sha }}
+          # Compose ${VAR:?} at parse time only — not used at runtime on VPS (real .env there).
+          BETTER_AUTH_URL: http://localhost
+          WEB_ORIGIN: http://localhost
+          BETTER_AUTH_SECRET: ci-build-placeholder-min-16
         run: |
           export IMAGE_TAG
           docker compose -f docker-compose.dev.yml build api web runner
