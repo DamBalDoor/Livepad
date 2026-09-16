@@ -117,6 +117,10 @@ pnpm exec drizzle-kit push --force
 
 В `docker-compose.dev.yml` заданы лимиты и `--innodb-buffer-pool-size=64M`. При OOM увеличьте swap, не поднимайте лимиты MySQL без нужды.
 
+## Ожидание MySQL
+
+На VPS (Docker Compose **v5.x**) **не используйте** `docker compose wait` и `docker compose up --wait` для long-running сервисов: на уже запущенном healthy MySQL команда может зависнуть надолго. Деплой вызывает **`scripts/wait-mysql-healthy.sh`** — только `up -d mysql` и poll `docker inspect` → `Health.Status`.
+
 ## Откат деплоя
 
 `scripts/deploy-dev.sh` хранит последний успешный тег в **`.last-good-image-tag`** (в каталоге репозитория на VPS). Порядок: pull → mysql healthy → migrate → `up -d` → health. Если health не прошёл, скрипт откатывает `IMAGE_TAG` на предыдущий good tag и снова делает `pull` + `up -d`.
