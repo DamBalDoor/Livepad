@@ -9,12 +9,14 @@ const sizeClass: Record<Size, string> = {
 
 export type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
+  tooltip?: string;
   size?: Size;
   children: ReactNode;
 };
 
 export function IconButton({
   label,
+  tooltip,
   size = "sm",
   className = "",
   children,
@@ -23,7 +25,7 @@ export function IconButton({
   return (
     <button
       type="button"
-      title={label}
+      title={tooltip ?? label}
       aria-label={label}
       className={`inline-flex shrink-0 items-center justify-center rounded-lp-sm text-lp-secondary transition-colors hover:bg-lp-muted ${sizeClass[size]} ${className}`}
       {...rest}

@@ -9,7 +9,7 @@ const toneClass: Record<BadgeTone, string> = {
   warning: "bg-lp-warning-muted text-lp-warning",
   danger: "bg-lp-danger-muted text-lp-danger",
   info: "bg-lp-info-muted text-lp-info",
-  accent: "bg-lp-accent-muted text-lp-accent",
+  accent: "bg-lp-accent-muted text-lp-accent-text",
 };
 
 export function Badge({

@@ -111,7 +111,7 @@ export default function RoomPage() {
               {copy.invite.copyGuestLinkForIncognito}
             </Button>
           </div>
-          <Link to="/" className="mt-4 block text-center text-[length:var(--lp-text-sm)] text-lp-accent">
+          <Link to="/" className="mt-4 block text-center text-[length:var(--lp-text-sm)] text-lp-accent-text">
             {copy.invite.backToDash}
           </Link>
         </Card>
@@ -126,7 +126,7 @@ export default function RoomPage() {
           <p className="mb-4 text-[length:var(--lp-text-md)] text-lp-danger" role="alert">
             {error}
           </p>
-          <Link to="/" className="text-[length:var(--lp-text-sm)] font-medium text-lp-accent hover:underline">
+          <Link to="/" className="text-[length:var(--lp-text-sm)] font-medium text-lp-accent-text hover:underline">
             На главную
           </Link>
         </Card>
@@ -579,7 +579,7 @@ function Ide({
             {copy.guest.noticeTitle}
             <button
               type="button"
-              className="ml-2 text-lp-accent underline"
+              className="ml-2 text-lp-accent-text underline"
               onClick={() => setNoticeCompact(false)}
             >
               {copy.guest.noticeExpand}

@@ -59,7 +59,7 @@ export default function RegisterPage() {
         </Button>
         <p className="mt-4 text-center text-[length:var(--lp-text-sm)] text-lp-secondary">
           {copy.auth.hasAccount}{" "}
-          <Link to="/login" className="font-medium text-lp-accent hover:underline">
+          <Link to="/login" className="font-medium text-lp-accent-text hover:underline">
             {copy.auth.loginLink}
           </Link>
         </p>

@@ -191,7 +191,7 @@ export default function DashboardPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       to={`/r/${room.slug}`}
-                      className="font-medium text-lp-primary hover:text-lp-accent"
+                      className="font-medium text-lp-primary hover:text-lp-accent-text"
                     >
                       {room.title}
                     </Link>

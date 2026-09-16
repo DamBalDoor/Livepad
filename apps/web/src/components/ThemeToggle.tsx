@@ -3,7 +3,8 @@ import { IconButton } from "./ui/IconButton";
 import {
   getAppliedTheme,
   subscribeTheme,
-  themeToggleLabel,
+  themeToggleAriaLabel,
+  themeToggleTooltip,
   toggleTheme,
   type Theme,
 } from "../lib/theme";
@@ -37,12 +38,11 @@ function MoonIcon() {
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const theme = useSyncExternalStore(subscribeTheme, getAppliedTheme, (): Theme => "dark");
-  const label = themeToggleLabel(theme);
-
   return (
     <IconButton
       className={className}
-      label={label}
+      label={themeToggleAriaLabel(theme)}
+      tooltip={themeToggleTooltip(theme)}
       aria-pressed={theme === "dark"}
       onClick={() => toggleTheme()}
     >

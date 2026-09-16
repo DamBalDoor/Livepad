@@ -45,6 +45,7 @@
   --lp-text-inverse: #fafaf8;
   --lp-accent: #2f6f6a;
   --lp-accent-hover: #275e5a;
+  --lp-accent-text: #2f6f6a;
   --lp-accent-muted: #e4f0ee;
   --lp-success: #2f7d4a;
   --lp-success-muted: #e6f4ea;
@@ -63,32 +64,33 @@
 
 [data-theme="dark"] {
   --lp-bg-canvas: #141413;
-  --lp-bg-surface: #1c1b19;
-  --lp-bg-elevated: #252422;
-  --lp-bg-muted: #2e2c28;
-  --lp-bg-inset: #232220;
-  --lp-border-subtle: #333029;
-  --lp-border-strong: #4a4640;
-  --lp-text-primary: #f4f3ef;
-  --lp-text-secondary: #b0aba3;
-  --lp-text-muted: #858078;
+  --lp-bg-surface: #1c1c1a;
+  --lp-bg-elevated: #262624;
+  --lp-bg-muted: #222220;
+  --lp-bg-inset: #10100f;
+  --lp-border-subtle: #2e2e2a;
+  --lp-border-strong: #454540;
+  --lp-text-primary: #f2f1ee;
+  --lp-text-secondary: #a8a59c;
+  --lp-text-muted: #7a776e;
   --lp-text-inverse: #fafaf8;
-  --lp-accent: #4a9e97;
-  --lp-accent-hover: #3f8a84;
-  --lp-accent-muted: #243432;
-  --lp-success: #4caf6a;
-  --lp-success-muted: #1e3328;
-  --lp-warning: #c4965a;
-  --lp-warning-muted: #3a3024;
-  --lp-danger: #e05548;
-  --lp-danger-muted: #3a2220;
-  --lp-info: #6a9bc4;
-  --lp-info-muted: #24303a;
-  --lp-focus-ring: #4a9e97;
-  --lp-focus-ring-offset: #1c1b19;
-  --lp-editor-border: #2a2a28;
-  --lp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --lp-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.42);
+  --lp-accent: #2f6f6a;
+  --lp-accent-hover: #3d8a84;
+  --lp-accent-text: #3d8a84;
+  --lp-accent-muted: #1a2e2c;
+  --lp-success: #4ca86a;
+  --lp-success-muted: #1a2e22;
+  --lp-warning: #c4a05a;
+  --lp-warning-muted: #2e2618;
+  --lp-danger: #e05a50;
+  --lp-danger-muted: #2e1816;
+  --lp-info: #5b8fbf;
+  --lp-info-muted: #1a2430;
+  --lp-focus-ring: #3d8a84;
+  --lp-focus-ring-offset: #1c1c1a;
+  --lp-editor-border: #252624;
+  --lp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --lp-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
 }
 
 @theme {
@@ -105,6 +107,7 @@
   --color-lp-inverse: var(--lp-text-inverse);
   --color-lp-accent: var(--lp-accent);
   --color-lp-accent-hover: var(--lp-accent-hover);
+  --color-lp-accent-text: var(--lp-accent-text);
   --color-lp-accent-muted: var(--lp-accent-muted);
   --color-lp-success: var(--lp-success);
   --color-lp-success-muted: var(--lp-success-muted);
