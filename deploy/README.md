@@ -45,6 +45,7 @@ echo "$YOUR_GITHUB_PAT" | docker login ghcr.io -u YOUR_GITHUB_USER --password-st
 BETTER_AUTH_SECRET=длинная-случайная-строка-не-из-репозитория
 BETTER_AUTH_URL=http://46.20.106.34
 WEB_ORIGIN=http://46.20.106.34
+# Обязательны для compose (без дефолтов в docker-compose.dev.yml):
 MYSQL_PASSWORD=livepad
 MYSQL_ROOT_PASSWORD=livepad
 IMAGE_TAG=develop
@@ -113,3 +114,11 @@ pnpm exec drizzle-kit push --force
 ## Память
 
 В `docker-compose.dev.yml` заданы лимиты и `--innodb-buffer-pool-size=64M`. При OOM увеличьте swap, не поднимайте лимиты MySQL без нужды.
+
+## Откат деплоя
+
+`scripts/deploy-dev.sh` хранит последний успешный тег в **`.last-good-image-tag`** (в каталоге репозитория на VPS). Порядок: pull → mysql healthy → migrate → `up -d` → health. Если health не прошёл, скрипт откатывает `IMAGE_TAG` на предыдущий good tag и снова делает `pull` + `up -d`.
+
+## Backlog
+
+- Запуск контейнеров от non-root `USER` (сейчас root в образах Node для простоты DEV).

@@ -27,13 +27,18 @@ COPY apps/api/src/db ./apps/api/src/db
 WORKDIR /app/apps/api
 ENTRYPOINT ["pnpm", "exec", "drizzle-kit", "push", "--force"]
 
+FROM base AS prod-deploy
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/api/package.json apps/api/
+COPY packages/shared ./packages/shared
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+RUN pnpm deploy --filter @livepad/api --prod --legacy /prod/api
+
 FROM node:20-alpine AS runner
-WORKDIR /app/apps/api
+WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/apps/api/dist ./dist
-COPY --from=build /app/apps/api/package.json ./package.json
-COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=deps /app/apps/api/node_modules ./node_modules
-COPY --from=deps /app/packages/shared /app/packages/shared
+COPY --from=prod-deploy /prod/api/dist ./dist
+COPY --from=prod-deploy /prod/api/node_modules ./node_modules
+COPY --from=prod-deploy /prod/api/package.json ./package.json
 EXPOSE 3001 1234
 CMD ["node", "dist/index.js"]

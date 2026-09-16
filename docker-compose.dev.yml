@@ -23,7 +23,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-plivepad"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -61,11 +61,11 @@ services:
     environment:
       DATABASE_URL: mysql://livepad:${MYSQL_PASSWORD:-livepad}@mysql:3306/livepad
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://46.20.106.34}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env}
       API_PORT: "3001"
       COLLAB_PORT: "1234"
       RUNNER_URL: http://runner:4000
-      WEB_ORIGIN: ${WEB_ORIGIN:-http://46.20.106.34}
+      WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
     depends_on:
       mysql:
         condition: service_healthy
@@ -74,10 +74,8 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:3001/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "CMD-SHELL",
+          "node -e \"Promise.all([fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)throw 0}),new Promise((ok,no)=>{const n=require('net').createConnection(1234,'127.0.0.1',()=>{n.end();ok()});n.on('error',no)})]).then(()=>process.exit(0)).catch(()=>process.exit(1))\"",
         ]
       interval: 15s
       timeout: 5s
@@ -147,8 +145,6 @@ services:
         condition: service_healthy
       web:
         condition: service_started
-      runner:
-        condition: service_healthy
     networks:
       - internal
     healthcheck:
