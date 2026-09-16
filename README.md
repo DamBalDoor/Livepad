@@ -42,7 +42,7 @@ flowchart LR
 
   Browser --> Web
   Web -->|"/api и /ws"| Api
-  Browser -->|"Yjs напрямую"| Collab
+  Browser -->|"/collab (prod) или :1234 (pnpm dev)"| Collab
   Api --> Db
   Collab --> Db
   Api --> Runner
@@ -80,6 +80,14 @@ pnpm dev
 | Runner | http://localhost:4000 |
 | Health | http://localhost:3001/api/health |
 
+### Docker DEV (полный стек, VPS)
+
+Production-like окружение на одном хосте: `docker compose -f docker-compose.dev.yml up -d --build`, затем `./scripts/db-push-docker.sh`. Публичная точка — **edge :80** (`/`, `/api`, `/ws`, `/collab`). Подробности, CI/CD и секреты GitHub: [deploy/README.md](./deploy/README.md).
+
+На VPS **http://46.20.106.34** после настройки: push/merge в **`develop`** деплоит через GitHub Actions (образы в GHCR + SSH). Рекомендуется **1–2 GB swap** при ~2 GB RAM.
+
+Локальный `docker-compose.yml` (только MySQL + runner для `pnpm dev`) не меняется.
+
 Интервьюер: `/register` или `/login` → создать комнату → «Копировать ссылку». Кандидат открывает ссылку в другом браузере/инкогнито (иначе та же cookie сделает его хостом).
 
 ## Переменные
@@ -103,3 +111,5 @@ pnpm dev
 | `pnpm db:push` | схема Drizzle → MySQL |
 | `pnpm db:up` | MySQL в Docker |
 | `pnpm db:up:local` | портативный MariaDB в `.tools/` (gitignored) |
+| `pnpm docker:dev:up` | полный DEV-стек в Docker |
+| `pnpm db:push:docker` | drizzle push в контейнере migrate (--force) |

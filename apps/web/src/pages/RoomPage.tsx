@@ -7,6 +7,7 @@ import { MonacoBinding } from "y-monaco";
 import type { RuntimeAction, RuntimeEvent, RuntimeMessage } from "@livepad/shared";
 import { authClient } from "../auth-client";
 import { closeRoom, getRoom, roomLink, rotateInvite } from "../api";
+import { collabWebSocketUrl } from "../lib/collab-url";
 import FileTree from "../components/FileTree";
 import ConsolePane from "../components/ConsolePane";
 import IntegrityPanel from "../components/IntegrityPanel";
@@ -312,7 +313,7 @@ function Ide({
     const color = colorForName(displayName);
     setCollab("connecting");
     const provider = new HocuspocusProvider({
-      url: `ws://${window.location.hostname}:1234`,
+      url: collabWebSocketUrl(),
       name: slug,
       document: ydoc,
       token,
