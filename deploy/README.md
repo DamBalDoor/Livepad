@@ -84,6 +84,8 @@ docker compose -f docker-compose.dev.yml up -d --build
 
 Workflow: [`.github/workflows/deploy-develop.yml`](../.github/workflows/deploy-develop.yml)
 
+Job сборки задаёт заглушки `BETTER_AUTH_*` / `WEB_ORIGIN` только чтобы `docker compose` мог распарсить `docker-compose.dev.yml` ( `${VAR:?}` ); на VPS по-прежнему нужен настоящий `.env`.
+
 1. Push / merge в `develop` → сборка образов `api`, `web`, `runner`, `migrate` → push в `ghcr.io/dambaldoor/livepad-*`
 2. SSH на DEV → `scripts/deploy-dev.sh` (git reset, pull, up, drizzle push, health)
 
