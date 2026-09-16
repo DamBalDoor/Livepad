@@ -55,7 +55,7 @@ export default function RegisterPage() {
           </p>
         ) : null}
         <Button type="submit" className="mt-6 w-full" busy={pending} disabled={pending}>
-          {pending ? "Создаём…" : copy.auth.ctaRegister}
+          {pending ? copy.auth.ctaRegisterBusy : copy.auth.ctaRegister}
         </Button>
         <p className="mt-4 text-center text-[length:var(--lp-text-sm)] text-lp-secondary">
           {copy.auth.hasAccount}{" "}

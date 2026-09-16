@@ -99,7 +99,6 @@ export function useIntegrityReporter(opts: {
       screen: screenLabel(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       language: navigator.language,
-      userAgent: navigator.userAgent.slice(0, 180),
       fullscreen: Boolean(document.fullscreenElement),
       devtools: devtoolsOpen(),
     });

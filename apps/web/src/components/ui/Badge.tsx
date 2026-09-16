@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { copy } from "../../lib/copy";
 
 export type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info" | "accent";
 
@@ -42,9 +43,9 @@ export function Badge({
 
 export function CollabBadge({ state }: { state: "connecting" | "synced" | "disconnected" }) {
   const map = {
-    connecting: { tone: "info" as const, label: "Подключение…" },
-    synced: { tone: "success" as const, label: "Синхронизировано" },
-    disconnected: { tone: "danger" as const, label: "Нет связи с редактором" },
+    connecting: { tone: "info" as const, label: copy.collab.connecting },
+    synced: { tone: "success" as const, label: copy.collab.synced },
+    disconnected: { tone: "danger" as const, label: copy.collab.disconnected },
   };
   const { tone, label } = map[state];
   return (
@@ -60,10 +61,10 @@ export function RunnerBadge({
   state: "idle" | "busy-install" | "busy-run" | "failed";
 }) {
   const map = {
-    idle: { tone: "neutral" as const, label: "Готово к запуску" },
-    "busy-install": { tone: "warning" as const, label: "Установка зависимостей…" },
-    "busy-run": { tone: "warning" as const, label: "Выполняется…" },
-    failed: { tone: "danger" as const, label: "Ошибка" },
+    idle: { tone: "neutral" as const, label: copy.runner.idle },
+    "busy-install": { tone: "warning" as const, label: copy.runner.busyInstall },
+    "busy-run": { tone: "warning" as const, label: copy.runner.busyRun },
+    failed: { tone: "danger" as const, label: copy.runner.failedBadge },
   };
   const { tone, label } = map[state];
   return (

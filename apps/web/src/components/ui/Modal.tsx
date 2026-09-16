@@ -23,14 +23,52 @@ export function ConfirmModal({
   onCancel: () => void;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+    lastFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const focusables = () => {
+      const root = dialogRef.current;
+      if (!root) return [] as HTMLElement[];
+      return Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
     };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const t = window.setTimeout(() => {
+      const items = focusables();
+      (items[0] ?? dialogRef.current)?.focus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+      lastFocusedRef.current?.focus();
+    };
   }, [open, onCancel]);
 
   if (!open) return null;
@@ -49,7 +87,8 @@ export function ConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="lp-modal-title"
-        className="relative z-10 w-full max-w-[440px] rounded-lp-lg border border-lp-subtle bg-lp-elevated p-6 shadow-lp-md"
+        tabIndex={-1}
+        className="relative z-10 w-full max-w-[440px] rounded-lp-lg border border-lp-subtle bg-lp-elevated p-6 shadow-lp-md outline-none"
       >
         <h2 id="lp-modal-title" className="mb-2 text-[length:var(--lp-text-lg)] font-semibold text-lp-primary">
           {title}

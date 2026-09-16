@@ -52,7 +52,7 @@ export default function DashboardPage() {
     setError("");
     try {
       const room = await createRoom(title.trim() || "Комната", template);
-      navigate(`/r/${room.slug}?token=${room.inviteToken}`);
+      navigate(`/r/${room.slug}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось создать комнату");
     }
@@ -188,7 +188,7 @@ export default function DashboardPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
-                      to={`/r/${room.slug}${room.inviteToken ? `?token=${room.inviteToken}` : ""}`}
+                      to={`/r/${room.slug}`}
                       className="font-medium text-lp-primary hover:text-lp-accent"
                     >
                       {room.title}
@@ -213,11 +213,11 @@ export default function DashboardPage() {
                   {menuSlug === room.slug ? (
                     <div className="absolute right-0 top-full z-10 mt-1 min-w-[200px] rounded-lp-md border border-lp-subtle bg-lp-elevated py-1 shadow-lp-sm">
                       <Link
-                        to={`/r/${room.slug}${room.inviteToken ? `?token=${room.inviteToken}` : ""}`}
+                        to={`/r/${room.slug}`}
                         className="block px-3 py-2 text-[length:var(--lp-text-sm)] hover:bg-lp-muted"
                         onClick={() => setMenuSlug(null)}
                       >
-                        Открыть
+                        {copy.dash.openRoom}
                       </Link>
                       {!room.closedAt ? (
                         <>

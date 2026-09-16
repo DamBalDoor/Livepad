@@ -171,7 +171,13 @@ function ClientCard({ client }: { client: IntegrityClientState; now: number }) {
           {client.multiMonitor == null ? "—" : client.multiMonitor ? `>1` : "1"}
         </dd>
         <dt>Бездействие</dt>
-        <dd className="text-lp-secondary">{client.idle ? copy.int.metricTabAway : copy.int.active}</dd>
+        <dd className="text-lp-secondary">
+          {client.idle ? copy.int.metricIdle : copy.int.metricEditorActive}
+        </dd>
+        <dt>{copy.int.metricLocale}</dt>
+        <dd className="max-w-[140px] truncate text-right text-lp-secondary">
+          {[client.timezone, client.language].filter(Boolean).join(" · ") || "—"}
+        </dd>
         <dt>DevTools</dt>
         <dd>
           {client.devtools ? (

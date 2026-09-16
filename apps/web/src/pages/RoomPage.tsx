@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as monaco from "monaco-editor";
@@ -35,6 +35,7 @@ type CollabState = "connecting" | "synced" | "disconnected";
 type RunnerUiState = "idle" | "busy-install" | "busy-run" | "failed";
 
 export default function RoomPage() {
+  const navigate = useNavigate();
   const { slug = "" } = useParams();
   const [params] = useSearchParams();
   const urlToken = params.get("token") ?? "";
@@ -94,14 +95,23 @@ export default function RoomPage() {
           <Banner tone="warning" className="mb-4 rounded-lp-md border">
             {copy.invite.errorHostCookie}
           </Banner>
-          <p className="mb-4 text-[length:var(--lp-text-sm)] text-lp-secondary">
-            Откройте приглашение в отдельном окне инкогнито или выйдите из аккаунта интервьюера.
-          </p>
-          <Button variant="secondary" className="w-full" onClick={() => window.open(roomLink(slug, inviteToken), "_blank")}>
-            Открыть ссылку
-          </Button>
+          <p className="mb-4 text-[length:var(--lp-text-sm)] text-lp-secondary">{copy.invite.errorHostCookieHint}</p>
+          <div className="flex flex-col gap-2">
+            <Button variant="primary" className="w-full" onClick={() => navigate(`/r/${slug}`)}>
+              {copy.invite.enterAsHost}
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={async () => {
+                await navigator.clipboard.writeText(roomLink(slug, inviteToken));
+              }}
+            >
+              {copy.invite.copyGuestLinkForIncognito}
+            </Button>
+          </div>
           <Link to="/" className="mt-4 block text-center text-[length:var(--lp-text-sm)] text-lp-accent">
-            На главную
+            {copy.invite.backToDash}
           </Link>
         </Card>
       </AuthShell>
@@ -212,6 +222,10 @@ function GuestPreflight({
           <li>{copy.preflight.metrics.window}</li>
           <li>{copy.preflight.metrics.devtools}</li>
           <li>{copy.preflight.metrics.presence}</li>
+          <li>{copy.preflight.metrics.timezone}</li>
+          <li>{copy.preflight.metrics.language}</li>
+          <li>{copy.preflight.metrics.screen}</li>
+          <li>{copy.preflight.metrics.multiMonitor}</li>
         </ul>
         <FieldGroup>
           <Input
@@ -347,6 +361,7 @@ function Ide({
       }
       if (event.type === "idle") {
         setRunnerBusy(null);
+        setRunnerFailed(false);
       }
       if (event.type === "exit" && event.code !== 0) {
         setRunnerFailed(true);
@@ -519,7 +534,7 @@ function Ide({
             {copy.runner.install}
           </Button>
           <Button
-            variant="primary"
+            variant="secondary"
             size="sm"
             disabled={runnerControlsDisabled}
             busy={runnerBusy === "run"}
@@ -529,7 +544,7 @@ function Ide({
             {copy.runner.run}
           </Button>
           {runnerBusy ? (
-            <Button variant="danger-ghost" size="sm" disabled={readOnly} onClick={() => send("stop")}>
+            <Button variant="danger-ghost" size="sm" onClick={() => send("stop")}>
               {copy.runner.stop}
             </Button>
           ) : null}

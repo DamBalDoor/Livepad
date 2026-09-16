@@ -20,6 +20,7 @@ export const copy = {
     resultSuccess: "Завершено успешно",
     resultFailed: "Завершено с ошибкой",
     stopped: "Остановлено",
+    failedBadge: "Ошибка",
   },
   files: {
     title: "Файлы",
@@ -38,6 +39,7 @@ export const copy = {
     error: "Не удалось загрузить список комнат",
     roomClosed: "Завершена",
     roomsTitle: "Комнаты",
+    openRoom: "Открыть",
   },
   invite: {
     loading: "Проверяем ссылку…",
@@ -45,6 +47,11 @@ export const copy = {
     errorClosed: "Комната завершена. Попросите интервьюера новую ссылку.",
     errorHostCookie:
       "Вы вошли как интервьюер в этом браузере. Для проверки гостевого входа откройте ссылку в режиме инкогнито.",
+    errorHostCookieHint:
+      "Чтобы войти в комнату как интервьюер, откройте её без приглашения в адресе. Для проверки гостя скопируйте ссылку и вставьте в окно инкогнито.",
+    enterAsHost: "Войти как интервьюер",
+    copyGuestLinkForIncognito: "Скопировать ссылку для инкогнито",
+    backToDash: "На главную",
     rotateCta: "Новая ссылка",
     rotateDone: "Новая ссылка скопирована. Старая больше не действует.",
     rotateHint:
@@ -70,6 +77,10 @@ export const copy = {
       window: "Изменение размера окна и полноэкранный режим",
       devtools: "Эвристика DevTools (возможны ложные срабатывания)",
       presence: "Подключение / отключение",
+      timezone: "Часовой пояс",
+      language: "Язык интерфейса браузера",
+      screen: "Разрешение экрана и размер окна",
+      multiMonitor: "Несколько мониторов (если браузер сообщает)",
     },
     nameLabel: "Как вас представлять",
     namePlaceholder: "Имя или никнейм",
@@ -95,6 +106,9 @@ export const copy = {
     statusOffline: "Не в сети",
     metricTabActive: "Вкладка в фокусе",
     metricTabAway: "Вкладка не в фокусе",
+    metricIdle: "Нет активности",
+    metricEditorActive: "Активен в редакторе",
+    metricLocale: "Пояс / язык",
     hello: "Кандидат в комнате",
     away: "Вкладка потеряла фокус",
     back: "Вкладка снова в фокусе",
@@ -112,6 +126,7 @@ export const copy = {
     errorCredentials: "Неверный email или пароль",
     ctaLogin: "Войти",
     ctaRegister: "Создать аккаунт",
+    ctaRegisterBusy: "Создаём…",
     loginSubtitle: "Вход в аккаунт",
     registerSubtitle: "Регистрация интервьюера",
     brand: "Livepad",
