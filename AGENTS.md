@@ -22,7 +22,7 @@ Livepad — self-hosted коллаборативная IDE для live-coding и
 | Docker / local run | `apps/runner/src/docker.ts` |
 | Env | `.env.example`, `apps/api/src/env.ts` |
 
-Vite проксирует `/api` и `/ws` на `:3001`. Hocuspocus — **отдельный** порт `:1234`, клиент ходит туда напрямую.
+Vite проксирует `/api`, `/ws` и `/collab` на API и Hocuspocus (`:3001` / `:1234`). Браузер открывает collab как same-origin `/collab` (см. `apps/web/src/lib/collab-url.ts`).
 
 ## Как работать
 
