@@ -4,18 +4,25 @@ import { ThemeToggle } from "../ThemeToggle";
 export function Card({
   children,
   className = "",
+  themeToggleCorner = false,
   as: Tag = "div",
   ...rest
 }: {
   children: ReactNode;
   className?: string;
+  themeToggleCorner?: boolean;
   as?: "div" | "form" | "section";
 } & HTMLAttributes<HTMLDivElement & HTMLFormElement & HTMLElement>) {
   return (
     <Tag
-      className={`rounded-lp-lg border border-lp-subtle bg-lp-surface p-6 shadow-lp-sm ${className}`}
+      className={`relative rounded-lp-lg border border-lp-subtle bg-lp-surface p-6 shadow-lp-sm ${className}`}
       {...rest}
     >
+      {themeToggleCorner ? (
+        <div className="absolute right-3 top-3">
+          <ThemeToggle />
+        </div>
+      ) : null}
       {children}
     </Tag>
   );
@@ -47,10 +54,7 @@ export function Panel({
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-h-full items-center justify-center bg-lp-canvas p-6">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
+    <div className="flex min-h-full items-center justify-center bg-lp-canvas p-6">
       <div className="w-full max-w-[400px]">{children}</div>
     </div>
   );

@@ -40,8 +40,17 @@ export function subscribeTheme(onChange: () => void) {
   return () => window.removeEventListener(THEME_CHANGE, handler);
 }
 
-export function themeToggleAriaLabel(current: Theme): string {
+export function themeStateAriaLabel(current: Theme): string {
+  return current === "dark" ? "Тема: тёмная" : "Тема: светлая";
+}
+
+export function themeToggleActionLabel(current: Theme): string {
   return current === "dark" ? "Переключить на светлую" : "Переключить на тёмную";
+}
+
+/** Состояние + действие по THEME.md Toggle UX (a11y). */
+export function themeToggleAriaLabel(current: Theme): string {
+  return `${themeStateAriaLabel(current)}. ${themeToggleActionLabel(current)}`;
 }
 
 export function themeToggleTooltip(current: Theme): string {

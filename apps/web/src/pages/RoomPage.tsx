@@ -92,7 +92,7 @@ export default function RoomPage() {
   if (hostCookieConflict) {
     return (
       <AuthShell>
-        <Card>
+        <Card themeToggleCorner>
           <Banner tone="warning" className="mb-4 rounded-lp-md border">
             {copy.invite.errorHostCookie}
           </Banner>
@@ -122,7 +122,7 @@ export default function RoomPage() {
   if (error) {
     return (
       <AuthShell>
-        <Card>
+        <Card themeToggleCorner>
           <p className="mb-4 text-[length:var(--lp-text-md)] text-lp-danger" role="alert">
             {error}
           </p>
@@ -137,7 +137,7 @@ export default function RoomPage() {
   if (role === "guest" && closedAt) {
     return (
       <AuthShell>
-        <Card>
+        <Card themeToggleCorner>
           <p className="text-[length:var(--lp-text-md)] text-lp-secondary">{copy.invite.errorClosed}</p>
         </Card>
       </AuthShell>
@@ -207,8 +207,8 @@ function GuestPreflight({
   onSubmit: () => void;
 }) {
   return (
-    <PageCanvas themeCorner className="flex min-h-full items-center justify-center p-6">
-      <Card className="w-full max-w-[480px]" as="form"
+    <PageCanvas className="flex min-h-full items-center justify-center p-6">
+      <Card className="w-full max-w-[480px]" themeToggleCorner as="form"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
           onSubmit();

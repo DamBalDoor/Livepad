@@ -27,7 +27,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <Card as="form" onSubmit={onSubmit}>
+      <Card as="form" themeToggleCorner onSubmit={onSubmit}>
         <h1 className="mb-1 text-[length:var(--lp-text-xl)] font-semibold text-lp-primary">{copy.auth.brand}</h1>
         <p className="mb-6 text-[length:var(--lp-text-md)] text-lp-secondary">{copy.auth.loginSubtitle}</p>
         <FieldGroup>
