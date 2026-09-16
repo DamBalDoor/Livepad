@@ -56,6 +56,7 @@ export function useIntegrityReporter(opts: {
   slug: string;
   token: string;
   name: string;
+  onLocalSignal?: (kind: "away" | "back") => void;
 }): void {
   const nameRef = useRef(opts.name);
   nameRef.current = opts.name;
@@ -119,6 +120,7 @@ export function useIntegrityReporter(opts: {
       if (!next) {
         awayStartedAt = Date.now();
         send("away", `${nameRef.current} ушёл с вкладки Livepad`, envMeta());
+        opts.onLocalSignal?.("away");
         return;
       }
       const awayMs = awayStartedAt > 0 ? Date.now() - awayStartedAt : 0;

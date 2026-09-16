@@ -1,28 +1,165 @@
 @import "tailwindcss";
 
+:root {
+  --lp-bg-canvas: #f7f6f3;
+  --lp-bg-surface: #ffffff;
+  --lp-bg-elevated: #ffffff;
+  --lp-bg-muted: #f0eeea;
+  --lp-bg-inset: #ebe8e3;
+  --lp-border-subtle: #e5e2dc;
+  --lp-border-strong: #c9c4ba;
+  --lp-text-primary: #1a1a18;
+  --lp-text-secondary: #5c5954;
+  --lp-text-muted: #8a857c;
+  --lp-text-inverse: #fafaf8;
+  --lp-accent: #2f6f6a;
+  --lp-accent-hover: #275e5a;
+  --lp-accent-muted: #e4f0ee;
+  --lp-success: #2f7d4a;
+  --lp-success-muted: #e6f4ea;
+  --lp-warning: #9a6b2f;
+  --lp-warning-muted: #f7f0e4;
+  --lp-danger: #b42318;
+  --lp-danger-muted: #fcebea;
+  --lp-info: #2f5f8a;
+  --lp-info-muted: #e8f0f7;
+  --lp-focus-ring: #2f6f6a;
+  --lp-focus-ring-offset: #ffffff;
+  --lp-editor-bg: #1e1f22;
+  --lp-console-bg: #161718;
+  --lp-editor-border: #2c2e33;
+  --lp-editor-gutter: #25262a;
+  --lp-text-xs: 12px;
+  --lp-text-sm: 13px;
+  --lp-text-md: 14px;
+  --lp-text-lg: 16px;
+  --lp-text-xl: 20px;
+  --lp-text-2xl: 24px;
+  --lp-radius-sm: 4px;
+  --lp-radius-md: 8px;
+  --lp-radius-lg: 12px;
+  --lp-radius-full: 9999px;
+  --lp-shadow-none: none;
+  --lp-shadow-sm: 0 1px 2px rgba(26, 26, 24, 0.06);
+  --lp-shadow-md: 0 4px 16px rgba(26, 26, 24, 0.1);
+  --lp-space-1: 4px;
+  --lp-space-2: 8px;
+  --lp-space-3: 12px;
+  --lp-space-4: 16px;
+  --lp-space-5: 24px;
+  --lp-space-6: 32px;
+  --lp-space-7: 40px;
+  --lp-space-8: 48px;
+  --lp-space-9: 64px;
+  --lp-control-sm: 28px;
+  --lp-control-md: 36px;
+  --lp-duration-fast: 120ms;
+  --lp-duration-normal: 180ms;
+  --lp-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@theme {
+  --color-lp-canvas: var(--lp-bg-canvas);
+  --color-lp-surface: var(--lp-bg-surface);
+  --color-lp-elevated: var(--lp-bg-elevated);
+  --color-lp-muted: var(--lp-bg-muted);
+  --color-lp-inset: var(--lp-bg-inset);
+  --color-lp-subtle: var(--lp-border-subtle);
+  --color-lp-strong: var(--lp-border-strong);
+  --color-lp-primary: var(--lp-text-primary);
+  --color-lp-secondary: var(--lp-text-secondary);
+  --color-lp-muted-text: var(--lp-text-muted);
+  --color-lp-inverse: var(--lp-text-inverse);
+  --color-lp-accent: var(--lp-accent);
+  --color-lp-accent-hover: var(--lp-accent-hover);
+  --color-lp-accent-muted: var(--lp-accent-muted);
+  --color-lp-success: var(--lp-success);
+  --color-lp-success-muted: var(--lp-success-muted);
+  --color-lp-warning: var(--lp-warning);
+  --color-lp-warning-muted: var(--lp-warning-muted);
+  --color-lp-danger: var(--lp-danger);
+  --color-lp-danger-muted: var(--lp-danger-muted);
+  --color-lp-info: var(--lp-info);
+  --color-lp-info-muted: var(--lp-info-muted);
+  --color-lp-editor: var(--lp-editor-bg);
+  --color-lp-console: var(--lp-console-bg);
+  --color-lp-editor-border: var(--lp-editor-border);
+  --radius-lp-sm: var(--lp-radius-sm);
+  --radius-lp-md: var(--lp-radius-md);
+  --radius-lp-lg: var(--lp-radius-lg);
+  --radius-lp-full: var(--lp-radius-full);
+  --shadow-lp-sm: var(--lp-shadow-sm);
+  --shadow-lp-md: var(--lp-shadow-md);
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--lp-text-md);
+  line-height: 1.43;
+  color: var(--lp-text-primary);
+  background: var(--lp-bg-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--lp-focus-ring);
+  outline-offset: 2px;
+}
+
+.lp-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lp-border-strong) transparent;
+}
+
+.lp-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.lp-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--lp-border-strong);
+  border-radius: var(--lp-radius-full);
 }
 
 .yRemoteSelection {
-  background-color: rgb(250 129 0 / 50%);
+  background-color: rgb(47 111 106 / 35%);
 }
+
 .yRemoteSelectionHead {
   position: absolute;
-  border-left: 2px solid orange;
-  border-top: 2px solid orange;
-  border-bottom: 2px solid orange;
+  border-left: 2px solid var(--lp-accent);
+  border-top: 2px solid var(--lp-accent);
+  border-bottom: 2px solid var(--lp-accent);
   height: 100%;
   box-sizing: border-box;
 }
+
 .yRemoteSelectionHead::after {
   position: absolute;
   content: " ";
-  border: 3px solid orange;
-  border-radius: 4px;
+  border: 3px solid var(--lp-accent);
+  border-radius: var(--lp-radius-sm);
   left: -4px;
   top: -5px;
+}
+
+@keyframes lp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lp-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: lp-spin 0.7s linear infinite;
 }

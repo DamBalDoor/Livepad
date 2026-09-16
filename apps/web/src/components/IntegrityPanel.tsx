@@ -1,19 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { IntegrityClientState, IntegrityEvent, IntegritySnapshot } from "@livepad/shared";
+import { Badge, EmptyState, Panel } from "./ui";
+import { copy } from "../lib/copy";
 
 const RECENT_OFFLINE_MS = 15 * 60 * 1000;
-
-function formatDuration(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `0:${String(s).padStart(2, "0")}`;
-}
-
-function currentAwayMs(client: IntegrityClientState, now: number): number {
-  if (client.present || !client.awayStartedAt) return 0;
-  return Math.max(0, now - Date.parse(client.awayStartedAt));
-}
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -29,24 +19,50 @@ function lastEventAt(events: IntegrityEvent[], clientId: string): number {
   return latest;
 }
 
-function eventLabel(event: IntegrityEvent): string {
-  if (event.kind === "back" && typeof event.meta?.awayMs === "number" && event.meta.awayMs > 0) {
-    const sec = Math.round(event.meta.awayMs / 1000);
-    return `${event.name} вернулся (был вне вкладки ${sec < 60 ? `${sec} с` : formatDuration(event.meta.awayMs)})`;
+function feedLabel(event: IntegrityEvent): string {
+  switch (event.kind) {
+    case "hello":
+      return copy.int.hello;
+    case "away":
+      return copy.int.away;
+    case "back":
+      return copy.int.back;
+    case "paste": {
+      const chars = typeof event.meta?.chars === "number" ? event.meta.chars : 0;
+      return copy.int.paste(chars);
+    }
+    case "idle": {
+      const mins = typeof event.meta?.minutes === "number" ? event.meta.minutes : 1;
+      return copy.int.idle(mins);
+    }
+    case "active":
+      return copy.int.active;
+    case "resize":
+      return copy.int.resize;
+    case "fullscreen":
+      return event.message.toLowerCase().includes("включ")
+        ? copy.int.fullscreenOn
+        : copy.int.fullscreenOff;
+    case "devtools":
+      return copy.int.devtools;
+    case "offline":
+      return copy.int.offline;
+    default:
+      return event.message;
   }
-  return event.message;
 }
 
-export default function IntegrityPanel({
-  slug,
-  token,
-}: {
-  slug: string;
-  token: string;
-}) {
+function eventTone(event: IntegrityEvent): "neutral" | "warning" | "success" {
+  if (event.kind === "devtools" || event.kind === "paste" || event.kind === "away" || event.kind === "idle") {
+    return "warning";
+  }
+  if (event.kind === "hello" || event.kind === "back" || event.kind === "active") return "success";
+  return "neutral";
+}
+
+export default function IntegrityPanel({ slug, token }: { slug: string; token: string }) {
   const [snapshot, setSnapshot] = useState<IntegritySnapshot>({ clients: [], events: [] });
   const [now, setNow] = useState(Date.now());
-  const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
@@ -65,125 +81,104 @@ export default function IntegrityPanel({
     return () => window.clearInterval(timer);
   }, []);
 
-  const { activeClients, pastClients } = useMemo(() => {
+  const activeClients = useMemo(() => {
     const active: IntegrityClientState[] = [];
-    const past: IntegrityClientState[] = [];
     for (const client of snapshot.clients) {
       if (client.online) {
         active.push(client);
         continue;
       }
       const lastAt = lastEventAt(snapshot.events, client.clientId);
-      if (lastAt > 0 && now - lastAt <= RECENT_OFFLINE_MS) {
-        active.push(client);
-      } else {
-        past.push(client);
-      }
+      if (lastAt > 0 && now - lastAt <= RECENT_OFFLINE_MS) active.push(client);
     }
-    return { activeClients: active, pastClients: past };
+    return active;
   }, [snapshot.clients, snapshot.events, now]);
 
   const events = [...snapshot.events].reverse().slice(0, 80);
+  const hasGuest = activeClients.length > 0 || snapshot.events.some((e) => e.kind === "hello");
 
   return (
-    <aside className="flex h-full min-h-0 flex-col border-l border-[#3c3c3c] bg-[#252526] text-[#cccccc]">
-      <div className="border-b border-[#3c3c3c] px-3 py-2 text-xs uppercase tracking-wide text-[#9d9d9d]">
-        Кандидат
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto">
-        {activeClients.length === 0 && pastClients.length === 0 ? (
-          <p className="px-3 py-4 text-xs text-[#9d9d9d]">Пока нет сигналов — кандидат ещё не в комнате.</p>
+    <Panel
+      className="border-l border-lp-subtle"
+      title={copy.int.panelTitle}
+    >
+      <p className="border-b border-lp-subtle px-3 py-2 text-[length:var(--lp-text-xs)] text-lp-muted-text">
+        {copy.int.panelSubtitle}
+      </p>
+      <div className="lp-scrollbar min-h-0 flex-1 overflow-auto">
+        {!hasGuest ? (
+          <EmptyState title={copy.int.empty} />
         ) : (
-          activeClients.map((client) => (
-            <ClientCard key={client.clientId} client={client} now={now} />
-          ))
+          activeClients.map((client) => <ClientCard key={client.clientId} client={client} now={now} />)
         )}
-        {pastClients.length > 0 ? (
-          <div className="border-b border-[#3c3c3c] px-3 py-2">
-            <button
-              type="button"
-              className="text-xs text-[#9d9d9d] hover:text-[#cccccc]"
-              onClick={() => setShowPast((v) => !v)}
-            >
-              {showPast ? "Скрыть" : "Показать"} прошлых ({pastClients.length})
-            </button>
-            {showPast ? (
-              <ul className="mt-2 space-y-1 text-xs text-[#9d9d9d]">
-                {pastClients.map((client) => (
-                  <li key={client.clientId}>{client.name}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="border-t border-[#3c3c3c] px-3 py-2 text-xs uppercase tracking-wide text-[#9d9d9d]">
-          Лента
+
+        <div className="border-t border-lp-subtle px-3 py-2 text-[length:var(--lp-text-xs)] font-medium text-lp-secondary">
+          {copy.int.feedTitle}
         </div>
-        <ul className="space-y-1 px-3 pb-3 text-xs">
+        <ul className="space-y-2 px-3 pb-4">
           {events.length === 0 ? (
-            <li className="text-[#9d9d9d]">Пусто</li>
+            <li className="text-[length:var(--lp-text-xs)] text-lp-muted-text">{copy.int.feedEmpty}</li>
           ) : (
-            events.map((event) => (
-              <li key={event.id} className="leading-snug">
-                <span className="text-[#9d9d9d]">{timeLabel(event.at)} </span>
-                <span className={tone(event)}>{eventLabel(event)}</span>
-              </li>
-            ))
+            events.map((event) => {
+              const tone = eventTone(event);
+              return (
+                <li key={event.id} className="flex gap-2 text-[length:var(--lp-text-xs)] leading-snug">
+                  <span className="shrink-0 font-mono text-lp-muted-text">{timeLabel(event.at)}</span>
+                  <span
+                    className={
+                      tone === "warning"
+                        ? "text-lp-warning"
+                        : tone === "success"
+                          ? "text-lp-success"
+                          : "text-lp-secondary"
+                    }
+                  >
+                    {feedLabel(event)}
+                  </span>
+                </li>
+              );
+            })
           )}
         </ul>
       </div>
-    </aside>
+    </Panel>
   );
 }
 
-function tone(event: IntegrityEvent): string {
-  if (event.kind === "paste" && event.meta?.large) return "text-amber-300";
-  if (event.kind === "away") return "text-amber-300";
-  if (event.kind === "offline" || event.kind === "devtools") return "text-red-300";
-  if (event.kind === "back" || event.kind === "hello") return "text-emerald-300";
-  return "text-[#cccccc]";
-}
-
-function ClientCard({ client, now }: { client: IntegrityClientState; now: number }) {
-  const awayNow = currentAwayMs(client, now);
-  const awayTotal = client.awayMs + awayNow;
+function ClientCard({ client }: { client: IntegrityClientState; now: number }) {
   const inRoom = client.online && client.present;
   return (
-    <div className="border-b border-[#3c3c3c] px-3 py-3 text-xs">
+    <div className="border-b border-lp-subtle px-3 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-medium text-white">{client.name}</span>
-        <span className={`rounded px-1.5 py-0.5 ${inRoom ? "bg-emerald-900 text-emerald-200" : "bg-amber-900 text-amber-200"}`}>
-          {!client.online ? "офлайн" : inRoom ? "в Livepad" : `ушёл ${formatDuration(awayNow)}`}
-        </span>
+        <span className="text-[length:var(--lp-text-sm)] font-medium text-lp-primary">{client.name}</span>
+        <Badge tone={client.online ? (inRoom ? "success" : "warning") : "neutral"}>
+          {!client.online
+            ? copy.int.statusOffline
+            : inRoom
+              ? copy.int.metricTabActive
+              : copy.int.metricTabAway}
+        </Badge>
       </div>
-      <dl className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 text-[#9d9d9d]">
-        <dt>Уходы</dt>
-        <dd className="text-[#cccccc]">{client.leaveCount}</dd>
-        <dt>Вне вкладки</dt>
-        <dd className="text-[#cccccc]">{formatDuration(awayTotal)}</dd>
+      <dl className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 text-[length:var(--lp-text-xs)] text-lp-muted-text">
         <dt>Крупные вставки</dt>
-        <dd className="text-[#cccccc]">{client.largePasteCount}</dd>
-        <dt>Последняя паста</dt>
-        <dd className="text-[#cccccc]">
-          {client.lastPasteChars == null ? "—" : `${client.lastPasteChars} симв.${client.lastPasteAfterAway ? " после ухода" : ""}`}
+        <dd className="text-lp-secondary">{client.largePasteCount}</dd>
+        <dt>Последняя вставка</dt>
+        <dd className="font-mono text-lp-secondary">
+          {client.lastPasteChars == null ? "—" : `${client.lastPasteChars} симв.`}
         </dd>
         <dt>Мониторы</dt>
-        <dd className="text-[#cccccc]">
-          {client.multiMonitor == null ? "неизвестно" : client.multiMonitor ? "больше одного" : "один"}
+        <dd className="text-lp-secondary">
+          {client.multiMonitor == null ? "—" : client.multiMonitor ? `>1` : "1"}
         </dd>
-        <dt>Экран</dt>
-        <dd className="max-w-[140px] truncate text-right text-[#cccccc]" title={client.screen}>
-          {client.screen || "—"}
-        </dd>
-        <dt>Простой</dt>
-        <dd className="text-[#cccccc]">{client.idle ? "не печатает" : "активен"}</dd>
-        <dt>Пояс / язык</dt>
-        <dd className="max-w-[140px] truncate text-right text-[#cccccc]">
-          {[client.timezone, client.language].filter(Boolean).join(" · ") || "—"}
-        </dd>
+        <dt>Бездействие</dt>
+        <dd className="text-lp-secondary">{client.idle ? copy.int.metricTabAway : copy.int.active}</dd>
         <dt>DevTools</dt>
-        <dd className="text-[#cccccc]">
-          {client.devtools == null ? "—" : client.devtools ? "возможно да" : "не видно"}
+        <dd>
+          {client.devtools ? (
+            <Badge tone="warning">{copy.int.devtools}</Badge>
+          ) : (
+            <span className="text-lp-secondary">—</span>
+          )}
         </dd>
       </dl>
     </div>

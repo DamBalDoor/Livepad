@@ -1,20 +1,38 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as monaco from "monaco-editor";
 import { MonacoBinding } from "y-monaco";
-import type { RuntimeEvent, RuntimeMessage } from "@livepad/shared";
+import type { RuntimeAction, RuntimeEvent, RuntimeMessage } from "@livepad/shared";
 import { authClient } from "../auth-client";
-import { getRoom, roomLink } from "../api";
+import { closeRoom, getRoom, roomLink, rotateInvite } from "../api";
 import FileTree from "../components/FileTree";
 import ConsolePane from "../components/ConsolePane";
 import IntegrityPanel from "../components/IntegrityPanel";
+import {
+  AuthShell,
+  Banner,
+  Button,
+  Card,
+  Checkbox,
+  CollabBadge,
+  ConfirmModal,
+  FieldGroup,
+  Input,
+  PageCanvas,
+  PromptModal,
+  RunnerBadge,
+} from "../components/ui";
+import { useToast } from "../components/ui/Toast";
 import { colorForName, languageForPath } from "../lib/monaco";
 import { useIntegrityReporter } from "../lib/useIntegrityReporter";
+import { copy } from "../lib/copy";
 import "../lib/monaco";
 
 type Person = { name: string; color: string; role?: string; clientId: number };
+type CollabState = "connecting" | "synced" | "disconnected";
+type RunnerUiState = "idle" | "busy-install" | "busy-run" | "failed";
 
 export default function RoomPage() {
   const { slug = "" } = useParams();
@@ -27,13 +45,16 @@ export default function RoomPage() {
   const [hostName, setHostName] = useState("");
   const [error, setError] = useState("");
   const [guestName, setGuestName] = useState(() => localStorage.getItem("livepad:name") ?? "");
-  const [nameOk, setNameOk] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState("");
+  const [preflightDone, setPreflightDone] = useState(() => sessionStorage.getItem(`livepad:preflight:${slug}`) === "1");
   const [copied, setCopied] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [closedAt, setClosedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (isPending) return;
+    setError("");
     getRoom(slug, urlToken || undefined)
       .then((room) => {
         setTitle(room.title);
@@ -41,62 +62,103 @@ export default function RoomPage() {
         setInviteToken(room.inviteToken);
         setHostName(room.hostName ?? "");
         setClosedAt(room.closedAt ?? null);
-        if (room.role === "host") setNameOk(true);
-        else if (localStorage.getItem("livepad:name")) setNameOk(true);
+        if (room.role === "host") {
+          setPreflightDone(true);
+        }
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        const msg = err.message.toLowerCase();
+        if (msg.includes("closed") || msg.includes("закрыт") || msg.includes("заверш")) {
+          setError(copy.invite.errorClosed);
+        } else {
+          setError(copy.invite.errorAccess);
+        }
+      })
       .finally(() => setLoaded(true));
   }, [slug, urlToken, isPending]);
 
-  const displayName = role === "host" ? hostName || session?.user.name || "Интервьюер" : guestName;
+  const hostCookieConflict = loaded && role === "host" && Boolean(urlToken);
 
-  if (!loaded) {
-    return <div className="p-8 text-sm text-[#9d9d9d]">Загрузка комнаты...</div>;
+  if (!loaded || isPending) {
+    return (
+      <PageCanvas>
+        <p className="p-8 text-[length:var(--lp-text-sm)] text-lp-muted-text">{copy.invite.loading}</p>
+      </PageCanvas>
+    );
+  }
+
+  if (hostCookieConflict) {
+    return (
+      <AuthShell>
+        <Card>
+          <Banner tone="warning" className="mb-4 rounded-lp-md border">
+            {copy.invite.errorHostCookie}
+          </Banner>
+          <p className="mb-4 text-[length:var(--lp-text-sm)] text-lp-secondary">
+            Откройте приглашение в отдельном окне инкогнито или выйдите из аккаунта интервьюера.
+          </p>
+          <Button variant="secondary" className="w-full" onClick={() => window.open(roomLink(slug, inviteToken), "_blank")}>
+            Открыть ссылку
+          </Button>
+          <Link to="/" className="mt-4 block text-center text-[length:var(--lp-text-sm)] text-lp-accent">
+            На главную
+          </Link>
+        </Card>
+      </AuthShell>
+    );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-full items-center justify-center p-6">
-        <div className="rounded border border-[#3c3c3c] bg-[#252526] p-6">
-          <p className="mb-3 text-red-400">{error}</p>
-          <Link to="/" className="text-[#4fc1ff]">
+      <AuthShell>
+        <Card>
+          <p className="mb-4 text-[length:var(--lp-text-md)] text-lp-danger" role="alert">
+            {error}
+          </p>
+          <Link to="/" className="text-[length:var(--lp-text-sm)] font-medium text-lp-accent hover:underline">
             На главную
           </Link>
-        </div>
-      </div>
+        </Card>
+      </AuthShell>
     );
   }
 
-  if (!inviteToken || (role === "guest" && !nameOk)) {
+  if (role === "guest" && closedAt) {
     return (
-      <div className="flex min-h-full items-center justify-center p-6">
-        <form
-          className="w-full max-w-sm rounded border border-[#3c3c3c] bg-[#252526] p-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const name = guestName.trim();
-            if (!name) return;
-            localStorage.setItem("livepad:name", name);
-            setNameOk(true);
-          }}
-        >
-          <h1 className="mb-2 text-lg text-white">Как тебя зовут?</h1>
-          <p className="mb-3 text-sm text-[#9d9d9d]">Это имя увидит интервьюер рядом с курсором.</p>
-          <p className="mb-4 text-xs leading-snug text-[#9d9d9d]">
-            Организатор видит, когда вкладка Livepad не в фокусе, и крупные вставки в редактор.
-          </p>
-          <input
-            autoFocus
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            className="mb-4 w-full rounded border border-[#3c3c3c] bg-[#1e1e1e] px-3 py-2 outline-none focus:border-[#0e639c]"
-            placeholder="Имя кандидата"
-          />
-          <button className="w-full rounded bg-[#0e639c] py-2 text-white">Войти в комнату</button>
-        </form>
-      </div>
+      <AuthShell>
+        <Card>
+          <p className="text-[length:var(--lp-text-md)] text-lp-secondary">{copy.invite.errorClosed}</p>
+        </Card>
+      </AuthShell>
     );
   }
+
+  if (role === "guest" && (!preflightDone || !guestName.trim())) {
+    return (
+      <GuestPreflight
+        guestName={guestName}
+        consent={consent}
+        consentError={consentError}
+        onName={setGuestName}
+        onConsent={setConsent}
+        onSubmit={() => {
+          const name = guestName.trim();
+          if (!name) return;
+          if (!consent) {
+            setConsentError(copy.preflight.consentError);
+            return;
+          }
+          setConsentError("");
+          localStorage.setItem("livepad:name", name);
+          sessionStorage.setItem(`livepad:preflight:${slug}`, "1");
+          setPreflightDone(true);
+        }}
+      />
+    );
+  }
+
+  const displayName =
+    role === "host" ? hostName || session?.user.name || "Интервьюер" : guestName.trim();
 
   return (
     <Ide
@@ -112,7 +174,66 @@ export default function RoomPage() {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
+      onClosed={(at) => setClosedAt(at)}
+      onRotated={(tok) => setInviteToken(tok)}
     />
+  );
+}
+
+function GuestPreflight({
+  guestName,
+  consent,
+  consentError,
+  onName,
+  onConsent,
+  onSubmit,
+}: {
+  guestName: string;
+  consent: boolean;
+  consentError: string;
+  onName: (v: string) => void;
+  onConsent: (v: boolean) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <PageCanvas className="flex min-h-full items-center justify-center p-6">
+      <Card className="w-full max-w-[480px]" as="form"
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <h1 className="mb-2 text-[length:var(--lp-text-xl)] font-semibold text-lp-primary">{copy.preflight.title}</h1>
+        <p className="mb-4 text-[length:var(--lp-text-md)] text-lp-secondary">{copy.preflight.lead}</p>
+        <ul className="mb-6 list-disc space-y-2 pl-5 text-[length:var(--lp-text-sm)] text-lp-secondary">
+          <li>{copy.preflight.metrics.focus}</li>
+          <li>{copy.preflight.metrics.paste}</li>
+          <li>{copy.preflight.metrics.idle}</li>
+          <li>{copy.preflight.metrics.window}</li>
+          <li>{copy.preflight.metrics.devtools}</li>
+          <li>{copy.preflight.metrics.presence}</li>
+        </ul>
+        <FieldGroup>
+          <Input
+            label={copy.preflight.nameLabel}
+            placeholder={copy.preflight.namePlaceholder}
+            value={guestName}
+            onChange={(e) => onName(e.target.value)}
+            autoFocus
+            required
+          />
+          <Checkbox
+            checked={consent}
+            onChange={(e) => onConsent(e.target.checked)}
+            label={copy.preflight.consent}
+            error={consentError}
+          />
+        </FieldGroup>
+        <Button type="submit" className="mt-6 w-full" disabled={!guestName.trim() || !consent}>
+          {copy.preflight.cta}
+        </Button>
+      </Card>
+    </PageCanvas>
   );
 }
 
@@ -125,6 +246,8 @@ function Ide({
   closedAt,
   copied,
   onCopy,
+  onClosed,
+  onRotated,
 }: {
   slug: string;
   title: string;
@@ -134,23 +257,45 @@ function Ide({
   closedAt: string | null;
   copied: boolean;
   onCopy: () => void;
+  onClosed: (closedAt: string) => void;
+  onRotated: (token: string) => void;
 }) {
+  const readOnly = Boolean(closedAt);
   const editorRef = useRef<HTMLDivElement>(null);
+  const editorInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const [paths, setPaths] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
-  const [jobBusy, setJobBusy] = useState(false);
-  const [status, setStatus] = useState("подключение...");
+  const [runnerBusy, setRunnerBusy] = useState<RuntimeAction | null>(null);
+  const [runnerFailed, setRunnerFailed] = useState(false);
+  const [collab, setCollab] = useState<CollabState>("connecting");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [noticeCompact, setNoticeCompact] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [closeBusy, setCloseBusy] = useState(false);
+  const [rotateBusy, setRotateBusy] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const providerRef = useRef<HocuspocusProvider | null>(null);
-  useIntegrityReporter({ enabled: role === "guest", slug, token, name: displayName });
+  const { push: toast } = useToast();
+
+  useIntegrityReporter({
+    enabled: role === "guest" && !readOnly,
+    slug,
+    token,
+    name: displayName,
+    onLocalSignal: (kind) => {
+      if (kind === "away") toast(copy.guest.toastAway);
+    },
+  });
 
   useEffect(() => {
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
     const color = colorForName(displayName);
+    setCollab("connecting");
     const provider = new HocuspocusProvider({
       url: `ws://${window.location.hostname}:1234`,
       name: slug,
@@ -158,28 +303,35 @@ function Ide({
       token,
     });
     providerRef.current = provider;
-    provider.on("synced", () => setStatus("онлайн"));
-    provider.on("disconnect", () => setStatus("нет связи"));
-    provider.awareness.setLocalStateField("user", { name: displayName, color, role });
+    provider.on("synced", () => setCollab("synced"));
+    provider.on("disconnect", () => setCollab("disconnected"));
+    provider.on("connect", () => setCollab("connecting"));
+    const awareness = provider.awareness;
+    if (!awareness) {
+      provider.destroy();
+      ydoc.destroy();
+      return;
+    }
+    awareness.setLocalStateField("user", { name: displayName, color, role });
 
     const files = ydoc.getMap<Y.Text>("files");
     const refresh = () => {
       const keys = Array.from(files.keys()).sort();
       setPaths(keys);
-      setActive((current) => current && keys.includes(current) ? current : keys[0] ?? null);
+      setActive((current) => (current && keys.includes(current) ? current : keys[0] ?? null));
     };
     files.observe(refresh);
     refresh();
 
     const onAwareness = () => {
       const next: Person[] = [];
-      provider.awareness.getStates().forEach((state, clientId) => {
+      awareness.getStates().forEach((state, clientId) => {
         const user = (state as { user?: Omit<Person, "clientId"> }).user;
         if (user?.name) next.push({ ...user, clientId });
       });
       setPeople(next);
     };
-    provider.awareness.on("change", onAwareness);
+    awareness.on("change", onAwareness);
     onAwareness();
 
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
@@ -189,11 +341,18 @@ function Ide({
     wsRef.current = runtime;
     runtime.onmessage = (msg) => {
       const event = JSON.parse(String(msg.data)) as RuntimeEvent;
-      if (event.type === "busy") setJobBusy(true);
-      if (event.type === "idle") setJobBusy(false);
+      if (event.type === "busy") {
+        setRunnerBusy(event.action);
+        setRunnerFailed(false);
+      }
+      if (event.type === "idle") {
+        setRunnerBusy(null);
+      }
+      if (event.type === "exit" && event.code !== 0) {
+        setRunnerFailed(true);
+      }
       setEvents((prev) => {
-        if (event.type === "busy") return [...prev, event].slice(-400);
-        if (event.type === "idle") return [...prev, event].slice(-400);
+        if (event.type === "busy" || event.type === "idle") return [...prev, event].slice(-400);
         if (event.type === "status" && (event.data.startsWith("npm") || event.data.startsWith("node"))) {
           return [event];
         }
@@ -203,7 +362,7 @@ function Ide({
 
     return () => {
       files.unobserve(refresh);
-      provider.awareness.off("change", onAwareness);
+      awareness.off("change", onAwareness);
       provider.destroy();
       ydoc.destroy();
       runtime.close();
@@ -218,119 +377,249 @@ function Ide({
       minimap: { enabled: false },
       fontSize: 14,
       tabSize: 2,
+      readOnly: readOnly || collab === "disconnected",
     });
+    editorInstance.current = editor;
     const ytext = ydocRef.current.getMap<Y.Text>("files").get(active);
     if (!ytext) {
       editor.dispose();
+      editorInstance.current = null;
       return;
     }
     const model = monaco.editor.createModel("", languageForPath(active), monaco.Uri.parse(`file:///livepad/${active}`));
     editor.setModel(model);
-    const binding = new MonacoBinding(ytext, model, new Set([editor]), providerRef.current.awareness);
+    const binding = new MonacoBinding(ytext, model, new Set([editor]), providerRef.current!.awareness!);
     return () => {
       binding.destroy();
       model.dispose();
       editor.dispose();
+      editorInstance.current = null;
     };
-  }, [active]);
+  }, [active, readOnly, collab]);
+
+  useEffect(() => {
+    editorInstance.current?.updateOptions({ readOnly: readOnly || collab === "disconnected" });
+  }, [readOnly, collab]);
 
   function send(type: RuntimeMessage) {
     wsRef.current?.send(JSON.stringify({ type }));
   }
 
-  function onCreate() {
-    const path = window.prompt("Путь нового файла", "src/app.js");
-    if (!path || !ydocRef.current) return;
+  function onCreatePath(path: string) {
+    if (!path || !ydocRef.current || readOnly) return;
     const files = ydocRef.current.getMap<Y.Text>("files");
     if (!files.has(path)) files.set(path, new Y.Text());
     setActive(path);
   }
 
   function onDelete(path: string) {
-    if (!ydocRef.current) return;
-    if (!window.confirm(`Удалить ${path}?`)) return;
+    if (!ydocRef.current || readOnly) return;
     ydocRef.current.getMap("files").delete(path);
   }
 
+  const runnerUi: RunnerUiState = runnerBusy === "install"
+    ? "busy-install"
+    : runnerBusy === "run"
+      ? "busy-run"
+      : runnerFailed
+        ? "failed"
+        : "idle";
+
+  const runnerControlsDisabled = readOnly || Boolean(runnerBusy) || collab === "disconnected";
+
+  async function handleCloseRoom() {
+    setCloseBusy(true);
+    try {
+      const res = await closeRoom(slug);
+      onClosed(res.closedAt);
+      setCloseOpen(false);
+    } finally {
+      setCloseBusy(false);
+    }
+  }
+
+  async function handleRotateInvite() {
+    setRotateBusy(true);
+    setMenuOpen(false);
+    try {
+      const res = await rotateInvite(slug);
+      onRotated(res.inviteToken);
+      await navigator.clipboard.writeText(roomLink(slug, res.inviteToken));
+      toast(copy.invite.rotateDone);
+    } finally {
+      setRotateBusy(false);
+    }
+  }
+
   return (
-    <div className="flex h-full flex-col bg-[#1e1e1e]">
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[#3c3c3c] bg-[#3c3c3c] px-3 text-sm">
-        <Link to="/" className="font-semibold text-white">
+    <div className="flex h-full flex-col bg-lp-surface">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-lp-subtle bg-lp-surface px-3 text-[length:var(--lp-text-sm)]">
+        <Link to="/" className="font-semibold text-lp-primary">
           Livepad
         </Link>
-        <span className="text-[#cccccc]">{title}</span>
-        <span className="text-xs text-[#9d9d9d]">{status}</span>
-        <div className="ml-auto flex items-center gap-2">
+        <span className="hidden truncate text-lp-secondary sm:inline">{title}</span>
+        <div className="hidden h-4 w-px bg-lp-subtle sm:block" />
+        <CollabBadge state={collab} />
+        <RunnerBadge state={runnerUi} />
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
           {people.map((person) => (
             <span
               key={person.clientId}
-              className="rounded-full px-2 py-0.5 text-xs text-black"
-              style={{ background: person.color }}
-              title={person.role}
+              className="max-w-[120px] truncate rounded-lp-sm bg-lp-muted px-2 py-0.5 text-[length:var(--lp-text-xs)] text-lp-secondary"
+              title={person.role === "host" ? "Host" : "Гость"}
             >
               {person.name}
             </span>
           ))}
-          <button className="rounded bg-[#0e639c] px-2 py-1 text-xs text-white hover:bg-[#1177bb]" onClick={onCopy}>
-            {copied ? "Ссылка скопирована" : "Копировать ссылку"}
-          </button>
-          <button
-            disabled={jobBusy}
-            className="rounded bg-[#0e639c] px-2 py-1 text-xs text-white hover:bg-[#1177bb] disabled:opacity-50"
+          {role === "host" ? (
+            <>
+              <Button variant="secondary" size="sm" onClick={onCopy}>
+                {copied ? copy.room.copyLinkDone : copy.room.copyLink}
+              </Button>
+              <div className="relative">
+                <Button variant="ghost" size="sm" onClick={() => setMenuOpen((v) => !v)}>
+                  ⋯
+                </Button>
+                {menuOpen ? (
+                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[220px] rounded-lp-md border border-lp-subtle bg-lp-elevated py-1 shadow-lp-sm">
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-[length:var(--lp-text-sm)] hover:bg-lp-muted disabled:opacity-50"
+                      disabled={rotateBusy || readOnly}
+                      onClick={handleRotateInvite}
+                    >
+                      {copy.invite.rotateCta}
+                    </button>
+                    <p className="px-3 pb-1 text-[length:var(--lp-text-xs)] text-lp-muted-text">{copy.invite.rotateHint}</p>
+                    {!readOnly ? (
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-[length:var(--lp-text-sm)] text-lp-danger hover:bg-lp-danger-muted"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setCloseOpen(true);
+                        }}
+                      >
+                        {copy.room.closeCta}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={runnerControlsDisabled}
+            busy={runnerBusy === "install"}
+            title={copy.runner.sharedTooltip}
             onClick={() => send("install")}
           >
-            Install
-          </button>
-          <button
-            disabled={jobBusy}
-            className="rounded bg-[#388a34] px-2 py-1 text-xs text-white hover:bg-[#3f9c3a] disabled:opacity-50"
+            {copy.runner.install}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={runnerControlsDisabled}
+            busy={runnerBusy === "run"}
+            title={copy.runner.sharedTooltip}
             onClick={() => send("run")}
           >
-            Run
-          </button>
-          {jobBusy ? (
-            <button
-              className="rounded bg-[#a1260d] px-2 py-1 text-xs text-white hover:bg-[#c72e12]"
-              onClick={() => send("stop")}
-            >
-              Стоп
-            </button>
+            {copy.runner.run}
+          </Button>
+          {runnerBusy ? (
+            <Button variant="danger-ghost" size="sm" disabled={readOnly} onClick={() => send("stop")}>
+              {copy.runner.stop}
+            </Button>
           ) : null}
         </div>
       </header>
-      {role === "host" && closedAt ? (
-        <div className="shrink-0 border-b border-[#3c3c3c] bg-[#3a2a2a] px-3 py-1 text-xs text-amber-200">
-          Комната закрыта для кандидатов — вы по-прежнему видите код.
-        </div>
+
+      {readOnly ? (
+        <Banner tone="muted">
+          {role === "host" ? copy.room.closedHostView : copy.room.closedBanner}
+        </Banner>
       ) : null}
+
+      {collab === "disconnected" ? (
+        <Banner
+          tone="danger"
+          title={copy.collab.disconnected}
+          action={copy.collab.disconnectedCta}
+          onAction={() => window.location.reload()}
+        >
+          {copy.collab.disconnectedHint}
+        </Banner>
+      ) : null}
+
       {role === "guest" ? (
-        <div className="shrink-0 border-b border-[#3c3c3c] bg-[#2a2d2e] px-3 py-1 text-xs text-[#9d9d9d]">
-          Организатор видит фокус вкладки Livepad и крупные вставки в редактор.
-        </div>
+        noticeCompact ? (
+          <Banner tone="info">
+            {copy.guest.noticeTitle}
+            <button
+              type="button"
+              className="ml-2 text-lp-accent underline"
+              onClick={() => setNoticeCompact(false)}
+            >
+              {copy.guest.noticeExpand}
+            </button>
+          </Banner>
+        ) : (
+          <Banner tone="info" title={copy.guest.noticeTitle} dismiss onDismiss={() => setNoticeCompact(true)}>
+            {copy.guest.noticeBody}
+          </Banner>
+        )
       ) : null}
+
       <div
-        className={`grid min-h-0 flex-1 grid-rows-[1fr_220px] ${
-          role === "host" ? "grid-cols-[220px_1fr_280px]" : "grid-cols-[220px_1fr]"
+        className={`grid min-h-0 flex-1 grid-rows-[1fr_minmax(180px,220px)] ${
+          role === "host" ? "grid-cols-[minmax(220px,240px)_1fr_minmax(280px,320px)]" : "grid-cols-[minmax(220px,240px)_1fr]"
         }`}
       >
-        <div className="row-span-2 border-r border-[#3c3c3c]">
-          <FileTree paths={paths} active={active} onOpen={setActive} onCreate={onCreate} onDelete={onDelete} />
+        <div className="row-span-2 min-h-0">
+          <FileTree
+            paths={paths}
+            active={active}
+            readOnly={readOnly}
+            onOpen={setActive}
+            onCreate={() => setCreateOpen(true)}
+            onDelete={onDelete}
+          />
         </div>
-        <div ref={editorRef} className="min-h-0" />
+        <div ref={editorRef} className="min-h-0 border-b border-lp-editor-border bg-lp-editor" />
         {role === "host" ? (
           <div className="row-span-2 min-h-0">
             <IntegrityPanel slug={slug} token={token} />
           </div>
         ) : null}
-        <div className="border-t border-[#3c3c3c]">
-          <div className="border-b border-[#3c3c3c] bg-[#252526] px-3 py-1 text-xs uppercase tracking-wide text-[#9d9d9d]">
-            Консоль
-          </div>
-          <div className="h-[188px]">
-            <ConsolePane events={events} />
-          </div>
+        <div className="min-h-0 border-t border-lp-subtle">
+          <ConsolePane events={events} onClear={() => setEvents([])} />
         </div>
       </div>
+
+      <ConfirmModal
+        open={closeOpen}
+        title={copy.room.closeCta}
+        body={copy.room.closeConfirm}
+        confirmLabel={copy.room.closeCta}
+        danger
+        busy={closeBusy}
+        onCancel={() => setCloseOpen(false)}
+        onConfirm={handleCloseRoom}
+      />
+
+      <PromptModal
+        open={createOpen}
+        title={copy.files.add}
+        defaultValue="src/app.js"
+        confirmLabel={copy.files.add}
+        onCancel={() => setCreateOpen(false)}
+        onConfirm={(path) => {
+          onCreatePath(path.trim());
+          setCreateOpen(false);
+        }}
+      />
     </div>
   );
 }
