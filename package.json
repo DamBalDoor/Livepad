@@ -10,6 +10,9 @@
     "db:up": "docker compose up -d mysql",
     "db:up:local": "powershell -NoProfile -File scripts/start-mysql.ps1",
     "db:push": "pnpm --filter @livepad/api db:push",
+    "db:push:docker": "bash scripts/db-push-docker.sh",
+    "docker:dev:up": "docker compose -f docker-compose.dev.yml up -d --build",
+    "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
     "build": "pnpm --filter @livepad/web build && pnpm --filter @livepad/api build"
   },
   "packageManager": "pnpm@10.15.1",

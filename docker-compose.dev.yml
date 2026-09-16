@@ -1,0 +1,167 @@
+# Полный DEV-стек Livepad (VPS / production-like). Локально: docker compose -f docker-compose.dev.yml up -d --build
+# MySQL не публикуется наружу. Единственная публичная точка — edge:80.
+
+name: livepad-dev
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: livepad-dev-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-livepad}
+      MYSQL_DATABASE: livepad
+      MYSQL_USER: livepad
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-livepad}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=64M
+      - --performance-schema=OFF
+    volumes:
+      - livepad_mysql_dev:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    image: ghcr.io/dambaldoor/livepad-migrate:${IMAGE_TAG:-develop}
+    profiles:
+      - migrate
+    environment:
+      DATABASE_URL: mysql://livepad:${MYSQL_PASSWORD:-livepad}@mysql:3306/livepad
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    image: ghcr.io/dambaldoor/livepad-api:${IMAGE_TAG:-develop}
+    container_name: livepad-dev-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql://livepad:${MYSQL_PASSWORD:-livepad}@mysql:3306/livepad
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env}
+      API_PORT: "3001"
+      COLLAB_PORT: "1234"
+      RUNNER_URL: http://runner:4000
+      WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"Promise.all([fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)throw 0}),new Promise((ok,no)=>{const n=require('net').createConnection(1234,'127.0.0.1',()=>{n.end();ok()});n.on('error',no)})]).then(()=>process.exit(0)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: ghcr.io/dambaldoor/livepad-web:${IMAGE_TAG:-develop}
+    container_name: livepad-dev-web
+    restart: unless-stopped
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  runner:
+    build:
+      context: ./apps/runner
+    image: ghcr.io/dambaldoor/livepad-runner:${IMAGE_TAG:-develop}
+    container_name: livepad-dev-runner
+    restart: unless-stopped
+    environment:
+      PORT: "4000"
+      NODE_IMAGE: ${NODE_IMAGE:-node:20-alpine}
+      JOBS_DIR: /jobs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - livepad_jobs_dev:/jobs
+    networks:
+      - internal
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  edge:
+    image: nginx:1.27-alpine
+    container_name: livepad-dev-edge
+    restart: unless-stopped
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  livepad_mysql_dev:
+  livepad_jobs_dev:
