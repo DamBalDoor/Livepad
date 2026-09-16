@@ -33,22 +33,7 @@ fi
 echo "==> docker compose pull (IMAGE_TAG=$IMAGE_TAG)"
 docker compose -f "$COMPOSE_FILE" pull
 
-echo "==> start mysql, wait healthy"
-docker compose -f "$COMPOSE_FILE" up -d mysql
-if docker compose -f "$COMPOSE_FILE" wait mysql 2>/dev/null; then
-  :
-else
-  for _ in $(seq 1 60); do
-    if docker compose -f "$COMPOSE_FILE" ps mysql 2>/dev/null | grep -q "(healthy)"; then
-      break
-    fi
-    sleep 2
-  done
-  docker compose -f "$COMPOSE_FILE" ps mysql | grep -q "(healthy)" || {
-    echo "MySQL did not become healthy" >&2
-    exit 1
-  }
-fi
+bash "$(dirname "$0")/wait-mysql-healthy.sh" "$COMPOSE_FILE"
 
 echo "==> drizzle push (migrate profile)"
 docker compose -f "$COMPOSE_FILE" --profile migrate run --rm migrate
