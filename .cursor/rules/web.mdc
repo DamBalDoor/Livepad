@@ -1,0 +1,17 @@
+---
+description: Web app conventions for the Livepad IDE
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# apps/web
+
+- React function components, Vite, Tailwind. Dark VS Code-like chrome (`#1e1e1e`, `#3c3c3c`).
+- Routes: `/` dashboard, `/login`, `/register`, `/r/:slug`. Guest token is the `token` query param.
+- `authClient` (better-auth) is interviewer session only. Room access: `getRoom(slug, token)` → `role: host | guest`.
+- Collab: `HocuspocusProvider` to `ws://<hostname>:1234` with the invite token. Files: `ydoc.getMap("files")`.
+- Runtime WS: `/ws/runtime?slug&token` (Vite proxy). Integrity WS: `/ws/integrity?slug&token`.
+- `useIntegrityReporter` only when `role === "guest"`. `IntegrityPanel` only when `role === "host"`.
+- Guest must see the notice (join form + IDE banner). Never render the candidate telemetry column for guests.
+- Paste telemetry: character/line counts, never clipboard contents.
+- After UI changes, verify host and guest separately. A logged-in interviewer opening the invite link is still host.

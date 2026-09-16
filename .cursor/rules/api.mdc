@@ -1,0 +1,18 @@
+---
+description: Fastify API, auth, collab, and WebSocket conventions
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# apps/api
+
+- Fastify on `API_PORT` (3001). Hocuspocus `collabServer` on `COLLAB_PORT` (1234) in the same process.
+- Auth: better-auth at `/api/auth/*`, cookie session. Host of a room = `session.user.id === rooms.hostUserId`.
+- Guest: valid `invite_token` query/body. No guest rows in MySQL.
+- HTTP: `GET/POST /api/rooms`, `GET /api/rooms/:slug`, `GET /api/health`.
+- WS: `GET /ws/runtime` (shared console), `GET /ws/integrity` (host receives snapshots only; guest sends events).
+- Yjs document name = room `slug`. Persist `rooms.yjs_state`. Seed default files in `workspace.ts`.
+- Schema changes: `apps/api/src/db/schema.ts` then `pnpm db:push`. Tables: better-auth user/session/account, `rooms`, `runs`, `integrity_events`.
+- Integrity: persist `message` + small JSON `payload`. Never store pasted source. On guest socket close, emit `offline`.
+- Run: read files from the live Y.Doc, one job per room, POST to runner. Do not call Piston.
+- Env from repo-root `.env` via `env.ts`. CORS `WEB_ORIGIN` with credentials.

@@ -1,0 +1,30 @@
+---
+description: Livepad product, stack, commands, and hard don'ts
+alwaysApply: true
+---
+
+# Livepad
+
+Self-hosted interview IDE. Interviewer has an account; candidate joins `/r/:slug?token=` with a display name only.
+
+Stack: pnpm workspaces. `apps/web` Vite React Tailwind Monaco. `apps/api` Fastify better-auth Drizzle Hocuspocus. `apps/runner` Node jobs. Shared types in `packages/shared`.
+
+Start: copy `.env.example` → `.env`, `pnpm install`, `pnpm db:up` (or `pnpm db:up:local` on Windows without Docker), `pnpm db:push`, `pnpm dev`. UI `localhost:5173`, API `3001`, collab WS `1234`, runner `4000`.
+
+Vite proxies `/api` and `/ws` to the API. Collab is **not** proxied: the browser opens `ws://<host>:1234`.
+
+## Do
+
+- Put shared DTOs in `packages/shared`, then use them on web and api.
+- Talk to the user in Russian. Keep UI copy in Russian.
+- Tell the candidate if integrity signals are collected. Host-only panel.
+- Prefer Docker runner; local node/npm is a Windows fallback with timeouts.
+
+## Don't
+
+- Don't add Piston. It cannot `npm install`; revisit only for Python/Java/C++ contests.
+- Don't build covert tab/paste/monitor telemetry. Don't log clipboard text — length only.
+- Don't add assignment pools, timers, autograde, chat, video, LSP, TTY, or Google login unless asked.
+- Don't commit `.env` or `.tools/`. Don't invent secrets or test passwords in docs.
+
+Read `README.md` and `AGENTS.md` for file map and verify steps.

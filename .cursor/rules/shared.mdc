@@ -1,0 +1,15 @@
+---
+description: Shared DTO source of truth between web and api
+globs: packages/shared/**/*.ts
+alwaysApply: false
+---
+
+# packages/shared
+
+This package is the contract. Change types here first, then web and api.
+
+- `RoomSummary` / `RoomAccess` — HTTP rooms.
+- `RuntimeEvent` / `RuntimeAction` — install/run console (`stdout` | `stderr` | `status` | `exit` | `error`).
+- `Integrity*` — host snapshot and guest events. Paste meta may include `chars`, `lines`, `large`, `afterAway` — not the pasted text.
+
+Keep types serializable over JSON/WebSocket. No React, no Node server imports.

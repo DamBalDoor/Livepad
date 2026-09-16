@@ -1,0 +1,15 @@
+---
+description: Node job runner isolation and timeouts
+globs: apps/runner/**/*.ts
+alwaysApply: false
+---
+
+# apps/runner
+
+Job: write room files → `npm install --ignore-scripts` (network on, ~60s) → `node` with network off (~15s). Image `node:20-alpine`.
+
+- Prefer Docker (`docker run`). If Docker is missing, local `npm`/`node` with the same timeouts — dev only, not a sandbox.
+- No lifecycle scripts (`ignore-scripts`). No extra package registries.
+- Stream stdout/stderr/status/exit as `JobEvent`. Kill the process tree on timeout (Windows: `taskkill /t`).
+- Paths must stay inside the job directory; reject `..`.
+- API talks to `RUNNER_URL` (default `http://127.0.0.1:4000`). Do not add Piston here.
