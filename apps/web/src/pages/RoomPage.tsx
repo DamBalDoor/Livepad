@@ -28,6 +28,7 @@ import { useToast } from "../components/ui/Toast";
 import { colorForName, languageForPath } from "../lib/monaco";
 import { useIntegrityReporter } from "../lib/useIntegrityReporter";
 import { copy } from "../lib/copy";
+import { ThemeToggle } from "../components/ThemeToggle";
 import "../lib/monaco";
 
 type Person = { name: string; color: string; role?: string; clientId: number };
@@ -82,7 +83,7 @@ export default function RoomPage() {
 
   if (!loaded || isPending) {
     return (
-      <PageCanvas>
+      <PageCanvas themeCorner>
         <p className="p-8 text-[length:var(--lp-text-sm)] text-lp-muted-text">{copy.invite.loading}</p>
       </PageCanvas>
     );
@@ -206,7 +207,7 @@ function GuestPreflight({
   onSubmit: () => void;
 }) {
   return (
-    <PageCanvas className="flex min-h-full items-center justify-center p-6">
+    <PageCanvas themeCorner className="flex min-h-full items-center justify-center p-6">
       <Card className="w-full max-w-[480px]" as="form"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
@@ -486,11 +487,8 @@ function Ide({
               {person.name}
             </span>
           ))}
-          {role === "host" ? (
-            <>
-              <Button variant="secondary" size="sm" onClick={onCopy}>
-                {copied ? copy.room.copyLinkDone : copy.room.copyLink}
-              </Button>
+          <div className="flex items-center gap-1">
+            {role === "host" ? (
               <div className="relative">
                 <Button variant="ghost" size="sm" onClick={() => setMenuOpen((v) => !v)}>
                   ⋯
@@ -521,8 +519,15 @@ function Ide({
                   </div>
                 ) : null}
               </div>
-            </>
-          ) : null}
+            ) : null}
+            <ThemeToggle />
+            {role === "host" ? (
+              <Button variant="secondary" size="sm" onClick={onCopy}>
+                {copied ? copy.room.copyLinkDone : copy.room.copyLink}
+              </Button>
+            ) : null}
+          </div>
+          <div className="hidden h-4 w-px bg-lp-subtle sm:block" aria-hidden />
           <Button
             variant="primary"
             size="sm"

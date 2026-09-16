@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { ThemeToggle } from "../ThemeToggle";
 
 export function Card({
   children,
@@ -46,12 +47,32 @@ export function Panel({
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-lp-canvas p-6">
+    <div className="relative flex min-h-full items-center justify-center bg-lp-canvas p-6">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-[400px]">{children}</div>
     </div>
   );
 }
 
-export function PageCanvas({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`min-h-full bg-lp-canvas text-lp-primary ${className}`}>{children}</div>;
+export function PageCanvas({
+  children,
+  className = "",
+  themeCorner = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  themeCorner?: boolean;
+}) {
+  return (
+    <div className={`relative min-h-full bg-lp-canvas text-lp-primary ${className}`}>
+      {themeCorner ? (
+        <div className="absolute right-4 top-4 z-10">
+          <ThemeToggle />
+        </div>
+      ) : null}
+      {children}
+    </div>
+  );
 }

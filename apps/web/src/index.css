@@ -1,6 +1,37 @@
 @import "tailwindcss";
 
 :root {
+  --lp-editor-bg: #1e1f22;
+  --lp-console-bg: #161718;
+  --lp-editor-gutter: #25262a;
+  --lp-text-xs: 12px;
+  --lp-text-sm: 13px;
+  --lp-text-md: 14px;
+  --lp-text-lg: 16px;
+  --lp-text-xl: 20px;
+  --lp-text-2xl: 24px;
+  --lp-radius-sm: 4px;
+  --lp-radius-md: 8px;
+  --lp-radius-lg: 12px;
+  --lp-radius-full: 9999px;
+  --lp-shadow-none: none;
+  --lp-space-1: 4px;
+  --lp-space-2: 8px;
+  --lp-space-3: 12px;
+  --lp-space-4: 16px;
+  --lp-space-5: 24px;
+  --lp-space-6: 32px;
+  --lp-space-7: 40px;
+  --lp-space-8: 48px;
+  --lp-space-9: 64px;
+  --lp-control-sm: 28px;
+  --lp-control-md: 36px;
+  --lp-duration-fast: 120ms;
+  --lp-duration-normal: 180ms;
+  --lp-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme="light"] {
   --lp-bg-canvas: #f7f6f3;
   --lp-bg-surface: #ffffff;
   --lp-bg-elevated: #ffffff;
@@ -25,37 +56,39 @@
   --lp-info-muted: #e8f0f7;
   --lp-focus-ring: #2f6f6a;
   --lp-focus-ring-offset: #ffffff;
-  --lp-editor-bg: #1e1f22;
-  --lp-console-bg: #161718;
   --lp-editor-border: #2c2e33;
-  --lp-editor-gutter: #25262a;
-  --lp-text-xs: 12px;
-  --lp-text-sm: 13px;
-  --lp-text-md: 14px;
-  --lp-text-lg: 16px;
-  --lp-text-xl: 20px;
-  --lp-text-2xl: 24px;
-  --lp-radius-sm: 4px;
-  --lp-radius-md: 8px;
-  --lp-radius-lg: 12px;
-  --lp-radius-full: 9999px;
-  --lp-shadow-none: none;
   --lp-shadow-sm: 0 1px 2px rgba(26, 26, 24, 0.06);
   --lp-shadow-md: 0 4px 16px rgba(26, 26, 24, 0.1);
-  --lp-space-1: 4px;
-  --lp-space-2: 8px;
-  --lp-space-3: 12px;
-  --lp-space-4: 16px;
-  --lp-space-5: 24px;
-  --lp-space-6: 32px;
-  --lp-space-7: 40px;
-  --lp-space-8: 48px;
-  --lp-space-9: 64px;
-  --lp-control-sm: 28px;
-  --lp-control-md: 36px;
-  --lp-duration-fast: 120ms;
-  --lp-duration-normal: 180ms;
-  --lp-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme="dark"] {
+  --lp-bg-canvas: #141413;
+  --lp-bg-surface: #1c1b19;
+  --lp-bg-elevated: #252422;
+  --lp-bg-muted: #2e2c28;
+  --lp-bg-inset: #232220;
+  --lp-border-subtle: #333029;
+  --lp-border-strong: #4a4640;
+  --lp-text-primary: #f4f3ef;
+  --lp-text-secondary: #b0aba3;
+  --lp-text-muted: #858078;
+  --lp-text-inverse: #fafaf8;
+  --lp-accent: #4a9e97;
+  --lp-accent-hover: #3f8a84;
+  --lp-accent-muted: #243432;
+  --lp-success: #4caf6a;
+  --lp-success-muted: #1e3328;
+  --lp-warning: #c4965a;
+  --lp-warning-muted: #3a3024;
+  --lp-danger: #e05548;
+  --lp-danger-muted: #3a2220;
+  --lp-info: #6a9bc4;
+  --lp-info-muted: #24303a;
+  --lp-focus-ring: #4a9e97;
+  --lp-focus-ring-offset: #1c1b19;
+  --lp-editor-border: #2a2a28;
+  --lp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --lp-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.42);
 }
 
 @theme {

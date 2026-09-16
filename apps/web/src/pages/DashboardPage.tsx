@@ -14,6 +14,7 @@ import {
   Input,
   PageCanvas,
 } from "../components/ui";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { copy } from "../lib/copy";
 
 export default function DashboardPage() {
@@ -98,7 +99,7 @@ export default function DashboardPage() {
 
   if (isPending || !session) {
     return (
-      <PageCanvas>
+      <PageCanvas themeCorner>
         <p className="p-8 text-[length:var(--lp-text-sm)] text-lp-muted-text">{copy.dash.loading}</p>
       </PageCanvas>
     );
@@ -109,7 +110,8 @@ export default function DashboardPage() {
       <header className="border-b border-lp-subtle bg-lp-surface">
         <div className="mx-auto flex max-w-[960px] items-center justify-between gap-4 px-6 py-4">
           <span className="text-[length:var(--lp-text-lg)] font-semibold text-lp-primary">{copy.auth.brand}</span>
-          <div className="flex items-center gap-3 text-[length:var(--lp-text-sm)] text-lp-secondary">
+          <div className="flex items-center gap-2 text-[length:var(--lp-text-sm)] text-lp-secondary">
+            <ThemeToggle />
             <span className="hidden sm:inline">{session.user.email}</span>
             <Button
               variant="ghost"
